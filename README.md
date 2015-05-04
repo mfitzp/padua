@@ -68,4 +68,4 @@ Provided functions are based on our current requirements, but will be expanded i
 
 # License
 
-PyMaxQuant is open source software and available under the MIT license.
+PyMaxQuant is open source software and available under the BSD 2-clause (Simplified) license.
