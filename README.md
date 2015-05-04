@@ -1,4 +1,4 @@
-# pymaxquant
+# PyMaxQuant
 
 A Python package for processing and analysing the output of proteomics software [MaxQuant](http://maxquant.org).
 
@@ -34,33 +34,33 @@ processing workflow scripts to be created and re-used.
 
 An example Phosphoproteomic label-free-quantification workflow would be as follows:
 
-   import maxquant
-   df = maxquant.io.read_maxquant('Phospho (STY)Sites.txt')
-   
-   df = maxquant.filter.filter_localization_probability(df)
-   
-   df = maxquant.filter.remove_reverse(df)
-   df = maxquant.filter.remove_only_identified_by_site(df)
-   df = maxquant.filter.remove_potential_contaminants(df)
-   
-   # Use standard Pandas dataframe manipulations to set an index
-   df.set_index('Proteins', inplace=True)
-   df = df.filter(regex='Intensity ')
-   
-   df = df.process.expand_side_table(df)
-   
-   # Remove the multiplicity column
-   df = df.filter(regex='Intensity ')
+    import maxquant
+    df = maxquant.io.read_maxquant('Phospho (STY)Sites.txt')
 
-   df = maxquant.process.apply_experimental_design(df, 'experimentalDesignTable.txt')
-   
-   # The result of this step will be a multilevel index Class, Replicate
-   # built by matching sample labels using regex
-   indices = [
-   ('Class': '^(.*)_',
-   ('Replicate': '_(\d)', 
-   ]
-   df = maxquant.process.build_index_from_labels(df, indices)
+    df = maxquant.filter.filter_localization_probability(df)
+
+    df = maxquant.filter.remove_reverse(df)
+    df = maxquant.filter.remove_only_identified_by_site(df)
+    df = maxquant.filter.remove_potential_contaminants(df)
+
+    # Use standard Pandas dataframe manipulations to set an index
+    df.set_index('Proteins', inplace=True)
+    df = df.filter(regex='Intensity ')
+
+    df = df.process.expand_side_table(df)
+
+    # Remove the multiplicity column
+    df = df.filter(regex='Intensity ')
+
+    df = maxquant.process.apply_experimental_design(df, 'experimentalDesignTable.txt')
+
+    # The result of this step will be a multilevel index Class, Replicate
+    # built by matching sample labels using regex
+    indices = [
+        ('Class': '^(.*)_',
+        ('Replicate': '_(\d)', 
+    ]
+    df = maxquant.process.build_index_from_labels(df, indices)
 
 # Future
 
