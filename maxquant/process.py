@@ -1,0 +1,197 @@
+__author__ = 'mfitzp'
+
+import pandas as pd
+import numpy as np
+from collections import defaultdict
+import re
+
+
+def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
+    """
+    Build a MultiIndex from a list of labels and matching regex
+
+    Supply with a dictionary of Hierarchy levels and matching regex to
+    extract this level from the sample label
+
+    :param df:
+    :param indices: Tuples of indices ('label','regex') matches
+    :param strip: Strip these strings from labels before matching (e.g. headers)
+    :param axis=1: Axis (1 = columns, 0 = rows)
+    :return:
+    """
+
+    df = df.copy()
+
+    if remove is None:
+        remove = []
+
+    if types is None:
+        types = {}
+
+    idx = [df.index, df.columns][axis]
+
+    indexes = []
+
+    for l in idx.get_level_values(0):
+
+        for s in remove:
+            l = l.replace(s, '')
+
+        ixr = []
+        for n, m in indices:
+            m = re.search(m, l)
+            if m:
+                r = m.group(1)
+
+                if n in types:
+                    # Map this value to a new type
+                    r = types[n](r)
+            else:
+                r = None
+
+            ixr.append(r)
+        indexes.append( tuple(ixr) )
+
+    if axis == 0:
+        df.index = pd.MultiIndex.from_tuples(indexes, names=[n for n, _ in indices])
+    else:
+        df.columns = pd.MultiIndex.from_tuples(indexes, names=[n for n, _ in indices])
+
+    return df
+
+
+def get_unique_indices(df, axis=1):
+    return dict(zip(df.columns.names, dif.columns.levels))
+
+
+def strip_index_labels(df, strip, axis=1):
+
+    df = df.copy()
+
+    if axis == 0:
+        df.columns = [c.replace(strip, '') for c in df.columns]
+
+    elif axis == 1:
+        df.columns = [c.replace(strip, '') for c in df.columns]
+
+    return df
+
+
+
+
+def combine_expression_columns(df, columns_to_combine, remove_combined=True):
+
+    """
+    Combine expression columns, calculating the mean for 2 columns
+
+
+    :param df: Pandas dataframe
+    :param columns_to_combine: A list of tuples containing the column names to combine
+    :return:
+    """
+
+    df = df.copy()
+
+    for ca, cb in columns_to_combine:
+        df["%s_(x+y)/2_%s" % (ca, cb)] = (df[ca] + df[cb]) / 2
+
+    if remove_combined:
+        for ca, cb in columns_to_combine:
+            df.drop([ca, cb], inplace=True, axis=1)
+
+    return df
+
+
+def expand_side_table(df):
+    """
+    Perform equivalent of 'expand side table' in Perseus by folding
+    Multiplicity columns down onto duplicate rows
+
+    The id is remapped to UID___Multiplicity, which
+    is different to Perseus behaviour, but prevents accidental of
+    non-matching rows from occurring later in analysis.
+
+    :param df:
+    :return:
+    """
+
+    df = df.copy()
+
+    idx = df.index.names
+    df.reset_index(inplace=True)
+
+    def strip_multiplicity(df):
+        df.columns = [c[:-4] for c in df.columns]
+        return df
+
+    base = df.filter(regex='.*(?<!___\d)$')
+
+    multi1 = df.filter(regex='^.*___1$')
+    multi1 = strip_multiplicity(multi1)
+    multi1['Multiplicity'] = '___1'
+    multi1 = pd.concat([multi1, base], axis=1)
+
+    multi2 = df.filter(regex='^.*___2$')
+    multi2 = strip_multiplicity(multi2)
+    multi2['Multiplicity'] = '___2'
+    multi2 = pd.concat([multi2, base], axis=1)
+
+    multi3 = df.filter(regex='^.*___3$')
+    multi3 = strip_multiplicity(multi3)
+    multi3['Multiplicity'] = '___3'
+    multi3 = pd.concat([multi3, base], axis=1)
+
+    df = pd.concat([multi1, multi2, multi3], axis=0)
+    df['id'] = ["%s%s" % (a, b) for a, b in zip(df['id'], df['Multiplicity'])]
+
+    if idx[0] is not None:
+        df.set_index(idx, inplace=True)
+
+    return df
+
+
+def apply_experimental_design(df, f, prefix='Intensity '):
+    """
+    Load the experimental design template and use it to apply the label names to the data columns.
+
+    :param df:
+    :param f: File path for the experimental design template
+    :param prefix:
+    :return: dt
+    """
+
+    df = df.copy()
+
+    edt = pd.read_csv(f, sep='\t', header=0)
+
+    edt.set_index('Experiment', inplace=True)
+
+    new_column_labels = []
+    for l in df.columns.values:
+        try:
+            l = edt.loc[l.replace(prefix, '')]['Name']
+        except IndexError:
+            pass
+
+        new_column_labels.append(l)
+
+    df.columns = new_column_labels
+    return df
+
+
+def transform_expression_columns(df, fn=np.log2, prefix='Intensity '):
+    """
+    Apply transformation to expression columns.
+
+    Default is log2 transform to expression columns beginning with Intensity
+
+
+    :param df:
+    :param prefix: The column prefix for expression columns
+    :return:
+    """
+    df = df.copy()
+
+    mask = [l.startswith(prefix) for l in df.columns.values]
+    df.iloc[:, mask] = fn(df.iloc[:, mask])
+    return df
