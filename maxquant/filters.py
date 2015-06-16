@@ -58,7 +58,7 @@ def filter_localization_probability(df, threshold=0.75):
     return df.iloc[localization_probability_mask, :]
 
 
-def minimum_valid_values_in_group(df, levels, n=1, invalid=np.nan):
+def minimum_valid_values_in_any_group(df, levels, n=1, invalid=np.nan):
     """
     Filter dataframe by at least n valid values in at least one group.
     
