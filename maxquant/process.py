@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 import re
+import itertools
 
 
 def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
@@ -170,7 +171,7 @@ def apply_experimental_design(df, f, prefix='Intensity '):
     for l in df.columns.values:
         try:
             l = edt.loc[l.replace(prefix, '')]['Name']
-        except IndexError:
+        except (IndexError, KeyError):
             pass
 
         new_column_labels.append(l)
@@ -194,4 +195,50 @@ def transform_expression_columns(df, fn=np.log2, prefix='Intensity '):
 
     mask = [l.startswith(prefix) for l in df.columns.values]
     df.iloc[:, mask] = fn(df.iloc[:, mask])
+    
+    
     return df
+    
+    
+    
+def fold_columns_to_rows(df, levels_from=2):
+    """
+    Take a levels from the columns and fold down into the row index.
+    This destroys the existing index; existing rows will appear as
+    columns under the new column index
+
+    :param df:
+    :param levels_from: The level (inclusive) from which column index will be folded
+    :return:
+    """
+    
+    df = df.copy()
+    df.reset_index(inplace=True, drop=True) # Wipe out the current index
+    df = df.T
+    
+    # Build all index combinations
+    levels_from = 2 # First level to fold down (all below will go with it)
+
+    a = [list( set( df.index.get_level_values(i) ) ) for i in range(0, levels_from)]
+    combinations = list(itertools.product(*a))
+    
+    names = df.index.names[:levels_from]
+    
+    concats = []
+    for c in combinations:
+        try:
+            dfcc = df.loc[c]
+
+        except KeyError:
+             continue
+
+        else:
+
+            dfcc.columns = pd.MultiIndex.from_tuples([c]*dfcc.shape[1], names=names)
+            concats.append(dfcc)
+
+    # Concatenate
+    df = pd.concat(concats, axis=1)
+    df.sort_index(axis=1, inplace=True)
+    return df
+        

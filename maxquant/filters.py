@@ -1,11 +1,17 @@
 __author__ = 'mfitzp'
 
 import pandas as pd
+import numpy as np
+
+def remove_columns_matching(df, column, match):
+    df = df.copy()
+    mask = df[column].values != match
+    return df.iloc[mask, :]
 
 
 def remove_columns_containing(df, column, match):
     df = df.copy()
-    mask = df[column].values != match
+    mask = [match not in str(v) for v in df[column].values]
     return df.iloc[mask, :]
 
 
@@ -52,4 +58,28 @@ def filter_localization_probability(df, threshold=0.75):
     return df.iloc[localization_probability_mask, :]
 
 
+def minimum_valid_values_in_group(df, levels, n=1, invalid=np.nan):
+    """
+    Filter dataframe by at least n valid values in at least one group.
+    
+    """
+
+    # Filter by at least 7 (values in class:timepoint) at least in at least one group
+    if invalid is np.nan:
+        dfx = ~np.isnan(df)
+    else:
+        dfx = df != invalid
+    
+    dfc = dfx.astype(int).sum(axis=1, level=levels)
+    
+    dfm = dfc.max(axis=1) > n
+    
+    mask = dfm.values
+    
+    return df.iloc[mask, :]
+    
+    
+    
+    
+    
 
