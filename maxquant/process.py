@@ -217,7 +217,6 @@ def fold_columns_to_rows(df, levels_from=2):
     df = df.T
     
     # Build all index combinations
-    levels_from = 2 # First level to fold down (all below will go with it)
 
     a = [list( set( df.index.get_level_values(i) ) ) for i in range(0, levels_from)]
     combinations = list(itertools.product(*a))
