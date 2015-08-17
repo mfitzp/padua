@@ -7,6 +7,63 @@ import re
 import itertools
 
 
+def build_index_from_design(df, design, index_col='Label', remove=None, types=None, axis=1, auto_convert_numeric=True):
+    """
+    Build a MultiIndex from a design table.
+    
+    Supply with a table with column headings for the new multiindex
+    and a index containing the labels to search for in the data.
+    
+    """
+
+    if index_col:
+        design = design.reset_index().set_index(index_col)
+    
+    labels = design.index.values
+    names = design.columns.values
+    idx_levels = len(names)
+    indexes = []
+    
+    # Convert numeric only columns_to_combine
+    if auto_convert_numeric:
+        design = design.convert_objects(convert_numeric=True)
+    
+    # Apply type settings
+    for n, t in types.items():
+        design[n] = design[n].astype(t)
+    
+    # Build the index
+    for l in df.columns.values:
+        for s in remove:
+            l = l.replace(s, '')
+        
+        # Remove trailing/forward spaces
+        l = l.strip()
+        
+        # Attempt to match to the labels
+        try:
+            # Index
+            idx = design.loc[l]
+        
+        except:
+            # No match, fill with None
+            idx = tuple([None] * idx_levels)
+            
+        else:
+            # We have a matched row, store it
+            idx = tuple(idx.values)
+            
+    
+        indexes.append(idx)
+    
+    if axis == 0:
+        df.index = pd.MultiIndex.from_tuples(indexes, names=names)
+    else:
+        df.columns = pd.MultiIndex.from_tuples(indexes, names=names)
+    
+    return df
+    
+
 def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
     """
     Build a MultiIndex from a list of labels and matching regex
@@ -153,7 +210,7 @@ def expand_side_table(df):
 
 def apply_experimental_design(df, f, prefix='Intensity '):
     """
-    Load the experimental design template and use it to apply the label names to the data columns.
+    Load the experimental design template from MaxQuant and use it to apply the label names to the data columns.
 
     :param df:
     :param f: File path for the experimental design template
