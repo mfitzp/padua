@@ -7,7 +7,7 @@ import re
 import itertools
 
 
-def build_index_from_design(df, design, index_col='Label', remove=None, types=None, axis=1, auto_convert_numeric=True):
+def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True):
     """
     Build a MultiIndex from a design table.
     
@@ -15,9 +15,8 @@ def build_index_from_design(df, design, index_col='Label', remove=None, types=No
     and a index containing the labels to search for in the data.
     
     """
-
-    if index_col:
-        design = design.reset_index().set_index(index_col)
+    df = df.copy()
+    design.set_index('Label', inplace=True)
     
     labels = design.index.values
     names = design.columns.values
@@ -29,8 +28,9 @@ def build_index_from_design(df, design, index_col='Label', remove=None, types=No
         design = design.convert_objects(convert_numeric=True)
     
     # Apply type settings
-    for n, t in types.items():
-        design[n] = design[n].astype(t)
+    if types:
+        for n, t in types.items():
+            design[n] = design[n].astype(t)
     
     # Build the index
     for l in df.columns.values:
@@ -39,7 +39,6 @@ def build_index_from_design(df, design, index_col='Label', remove=None, types=No
         
         # Remove trailing/forward spaces
         l = l.strip()
-        
         # Attempt to match to the labels
         try:
             # Index

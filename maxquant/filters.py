@@ -58,11 +58,16 @@ def filter_localization_probability(df, threshold=0.75):
     return df.iloc[localization_probability_mask, :]
 
 
-def minimum_valid_values_in_any_group(df, levels, n=1, invalid=np.nan):
+def minimum_valid_values_in_any_group(df, levels=None, n=1, invalid=np.nan):
     """
     Filter dataframe by at least n valid values in at least one group.
     
     """
+    df = df.copy()
+    
+    if levels is None:
+        if 'Group' in df.columns.names:
+            levels = [df.columns.names.index('Group')]
 
     # Filter by at least 7 (values in class:timepoint) at least in at least one group
     if invalid is np.nan:
