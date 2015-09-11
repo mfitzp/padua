@@ -82,7 +82,22 @@ def minimum_valid_values_in_any_group(df, levels=None, n=1, invalid=np.nan):
     mask = dfm.values
     
     return df.iloc[mask, :]
+
+def search(df, match, columns=['Proteins','Protein names','Gene names']):
+    """
+    Search for a given string in a set of columns in a processed dataframe
+    """
+    df = df.copy()
+    dft = df.reset_index()
     
+    mask = np.zeros((dft.shape[0],), dtype=bool)
+    idx = ['Proteins','Protein names','Gene names']
+    for i in idx:
+        if i in dft.columns:
+            mask = mask | np.array([match in str(l) for l in dft[i].values])
+            
+            
+    return df.iloc[mask]
     
     
     
