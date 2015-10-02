@@ -86,7 +86,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     return ax
 
 
-def _pca_weights(weights, pc, threshold=None):
+def _pca_weights(weights, pc, threshold=None, label_with=None):
     
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1,1,1)
@@ -96,17 +96,22 @@ def _pca_weights(weights, pc, threshold=None):
     ax.set_xlim(0, weights.shape[0])
     ax.set_aspect(1./ax.get_data_ratio())
     
-    wts = weights.iloc[pc,:]
+    wts = weights.iloc[:, pc]
     
     if threshold:
-        FILTER_UP = wts >= threshold
-        FILTER_DOWN = wts <= -threshold
-    
-        wts = wts[FILTER_UP | FILTER_DOWN]
+        FILTER_UP = wts.values >= threshold
+        FILTER_DOWN = wts.values <= -threshold
+        FILTER = FILTER_UP | FILTER_DOWN
         
-        for l, n, v in wts.reset_index().values:
-            x = names.index(l)
-            ax.annotate(get_protein_id(l),(x, v) )
+        wti = np.arange(0, weights.shape[0])
+        wti = wti[FILTER]
+        if label_with:
+            idx = wts.index.names.index(label_with)
+            for x in wti:
+                y = wts.iloc[x]
+                r, ha =  (30, 'left') if y >= 0 else (-30, 'left')
+                ax.text(x, y, get_protein_id(wts.index.values[x][idx]), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+                #ax.annotate(get_protein_id(wts.index.values[x][idx]),(x, y) )
 
         ax.axhline(threshold, 0, 1)
         ax.axhline(-threshold, 0, 1)
@@ -116,7 +121,7 @@ def _pca_weights(weights, pc, threshold=None):
     return ax
     
 
-def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=None, threshold=None, *args, **kwargs):
+def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=None, threshold=None, label_with=None, *args, **kwargs):
     
     scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
@@ -124,7 +129,7 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
     weights_ax = []
     
     for pc in range(0, weights.shape[1]):
-        weights_ax.append( _pca_weights(weights, pc, threshold=threshold) )
+        weights_ax.append( _pca_weights(weights, pc, threshold=threshold, label_with=label_with) )
     
         
     return scores_ax, weights_ax
