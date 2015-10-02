@@ -6,7 +6,16 @@ from collections import defaultdict
 import re
 import itertools
 
-
+def numeric(s):
+    try:
+        return int(s)
+    except ValueError:
+    
+        try:
+            return float(s)
+        except ValueError:
+            return s
+        
 def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True):
     """
     Build a MultiIndex from a design table.
@@ -39,10 +48,12 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
         
         # Remove trailing/forward spaces
         l = l.strip()
+        # Convert to numeric if possible
+        l = numeric(l)
         # Attempt to match to the labels
         try:
             # Index
-            idx = design.loc[l]
+            idx = design.loc[str(l)]
         
         except:
             # No match, fill with None
