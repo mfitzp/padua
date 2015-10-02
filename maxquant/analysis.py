@@ -79,3 +79,27 @@ def pca(df, n_components=2, mean_center=False, *args, **kwargs):
     weights.columns =  ['Weights on Principal Component %d' % (n+1) for n in range(0, weights.shape[1])]
        
     return scores, weights
+    
+    
+def enrichment(df):
+
+    values = []
+    groups = []
+    #totals = []
+
+    dfr = df.sum(axis=1, level=0)
+    for c in dfr.columns.values:
+        dfx = dfr[c]
+        dfx = dfx.dropna(axis=0, how='any')
+        #total = len([m for m in dfx.index.values if m != 'Unmodified'])
+        total = dfx.index.values.shape[0]
+        # Sum up the number of phosphosites
+        dfx = dfx.reset_index().filter(regex='Sequence|Modifications').set_index('Sequence').sum(axis=0, level=0)
+        phosp = dfx[dfx > 0].shape[0]
+
+        values.append((phosp, total-phosp))
+        groups.append(c)
+        #totals.append(total)
+
+    return pd.DataFrame(np.array(values).T, columns=groups, index=["",""])    
+    

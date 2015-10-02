@@ -129,6 +129,24 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
         
     return scores_ax, weights_ax
 
+    
+def enrichment(df):
 
+    result = analysis.enrichment(df)
+
+    axes = result.plot(kind='pie', subplots=True, figsize=(result.shape[1]*4, 3))
+    for n, ax in enumerate(axes):
+        #ax.legend().set_visible(False)
+        total = result.values[1,n] + result.values[0,n]
+        ax.annotate("%.1f%%" % (100 * result.values[0,n]/total), 
+                 xy=(0.3, 0.6),  
+                 xycoords='axes fraction',
+                 color='w',
+                 size=22)
+        ax.set_xlabel( ax.get_ylabel(), fontsize=22)
+        ax.set_ylabel("")
+        ax.set_aspect('equal', 'datalim')
+
+    return axes
 
     
