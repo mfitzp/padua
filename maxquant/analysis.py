@@ -10,8 +10,9 @@ except:
 else:
     from sklearn.decomposition import PCA    
 
+from . import filters
 
-def column_correlations(df):
+def correlation(df):
     """
     Calculate column-wise Pearson correlations
 
@@ -26,28 +27,27 @@ def column_correlations(df):
     df = df.copy()
     df[ np.isinf(df) ] = np.nan
 
-    n = len( df.columns.get_level_values(0) )
+    n = df.shape[1]
 
+    cdf = np.zeros((n, n))
+    cdf[ cdf == 0] = np.nan
 
-    data = np.zeros((n, n))
-    data[data == 0] = np.nan
-
-    cdf = pd.DataFrame(data)
-    cdf.columns = df.columns
-    cdf.index = df.columns
+    last = -1
 
     for y in range(n):
         for x in range(y, n):
-            try:
-                data = df.iloc[:, [x, y] ].dropna(how='any').values
+            if x == y:
+                r = 1
+            else:
+                data = df.ix[:, [x, y] ].dropna(how='any').values
                 r = np.corrcoef(data[:, 0], data[:, 1])[0, 1]
 
-            except TypeError:
-                pass
+            cdf[x, y] = r ** 2
+            cdf[y, x] = r ** 2
 
-            else:
-                cdf.iloc[x, y] = r **2
-                cdf.iloc[y, x] = r **2
+    cdf = pd.DataFrame(cdf)
+    cdf.columns = df.columns
+    cdf.index = df.columns
 
     return cdf
     
@@ -103,3 +103,23 @@ def enrichment(df):
 
     return pd.DataFrame(np.array(values).T, columns=groups, index=["",""])    
     
+
+def sitespeptidesproteins(df, site_localization_probability=0.75):
+    sites = filters.filter_localization_probability(df, site_localization_probability)['Sequence window']
+    peptides = set(df['Sequence window'])
+    proteins = set([p.split(';')[0] for p in df['Proteins']])
+    return len(sites), len(peptides), len(proteins)
+    
+
+def modifiedaminoacids(df):
+    amino_acids = list(df['Amino acid'].values)
+    aas = set(amino_acids)
+    quants = {}
+
+    for aa in aas:
+        quants[aa] = amino_acids.count(aa)
+        
+    total_aas = len(amino_acids)
+
+    return total_aas, quants
+

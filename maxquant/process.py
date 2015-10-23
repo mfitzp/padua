@@ -25,7 +25,8 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     
     """
     df = df.copy()
-    design.set_index('Label', inplace=True)
+    if 'Label' not in design.index.names:
+        design = design.set_index('Label')
     
     labels = design.index.values
     names = design.columns.values
@@ -39,7 +40,8 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     # Apply type settings
     if types:
         for n, t in types.items():
-            design[n] = design[n].astype(t)
+            if n in design.columns.values:
+                design[n] = design[n].astype(t)
     
     # Build the index
     for l in df.columns.values:
@@ -65,7 +67,7 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
             
     
         indexes.append(idx)
-    
+
     if axis == 0:
         df.index = pd.MultiIndex.from_tuples(indexes, names=names)
     else:
@@ -191,8 +193,19 @@ def expand_side_table(df):
     def strip_multiplicity(df):
         df.columns = [c[:-4] for c in df.columns]
         return df
+        
+    def strip_multiple(s):
+        for sr in ['___1','___2','___3']:
+            if s.endswith(sr):
+                s = s[:-4]
+        return s
 
     base = df.filter(regex='.*(?<!___\d)$')
+    
+    # Remove columns that will match ripped multiplicity columns
+    for c in df.columns.values:
+        if strip_multiple(c) != c and strip_multiple(c) in list(base.columns.values):
+            base.drop(strip_multiple(c), axis=1, inplace=True)
 
     multi1 = df.filter(regex='^.*___1$')
     multi1 = strip_multiplicity(multi1)
@@ -292,14 +305,18 @@ def fold_columns_to_rows(df, levels_from=2):
     
     concats = []
     for c in combinations:
+        
         try:
             dfcc = df.loc[c]
 
         except KeyError:
-             continue
+            continue
 
         else:
-
+            # Silly pandas
+            if len(dfcc.shape) == 1:
+                continue
+        
             dfcc.columns = pd.MultiIndex.from_tuples([c]*dfcc.shape[1], names=names)
             concats.append(dfcc)
 

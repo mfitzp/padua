@@ -1,7 +1,7 @@
 __author__ = 'mfitzp'
 
 import pandas as pd
-
+import numpy as np
 
 def read_maxquant(f):
     """
@@ -18,6 +18,7 @@ def read_maxquant(f):
 
     return df
 
+
 def read_perseus(f):
     """
     Load a Perseus processed data table
@@ -28,7 +29,6 @@ def read_perseus(f):
     df = pd.read_csv(f, delimiter='\t', header=[0,1,2,3], low_memory=False)
     df.columns = pd.MultiIndex.from_tuples([(x,) for x in df.columns.get_level_values(0)])
     return df
-
 
 
 def write_perseus(f, df):
@@ -81,3 +81,55 @@ def write_perseus(f, df):
     df.columns = pd.MultiIndex.from_tuples([(k, map_field_type(n, k)) for n, k in enumerate(df.columns)], names=["Label","Type"])
     df = df.transpose().reset_index().transpose()
     df.to_csv(f, index=False, header=False)
+    
+
+def get_protein_id(s):
+    return s.split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
+
+
+def write_phosphopath(df, f):
+    """
+    Write out the data frame of phosphosites
+    protein, protein-Rsite, Rsite, multiplicity
+    Q13619	Q13619-S10	S10	1
+    Q9H3Z4	Q9H3Z4-S10	S10	1
+    Q6GQQ9	Q6GQQ9-S100	S100	1
+    Q86YP4	Q86YP4-S100	S100	1
+    Q9H307	Q9H307-S100	S100	1
+    Q8NEY1	Q8NEY1-S1000	S1000	1
+    
+    """
+
+    proteins = [get_protein_id(k) for k in df.index.get_level_values('Proteins')]
+    amino_acids = df.index.get_level_values('Amino acid')
+    positions = [get_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
+    multiplicity = [k[-1] for k in df.index.get_level_values('Multiplicity')]
+
+    apos = ["%s%s" % x for x in zip(amino_acids, positions)]
+    prar = ["%s-%s" % x for x in zip(proteins, apos)]
+
+    phdf = pd.DataFrame(np.array(list(zip(proteins, prar, apos, multiplicity))))
+    phdf.to_csv(f, sep='\t', index=None, header=None)
+
+
+def write_phosphopath_ratio(df, f, a=None, b=None):
+    """
+    Write out the data frame ratio between two groups
+    protein-Rsite-multiplicity-timepoint
+    ID	Ratio
+    Q13619-S10-1-1	0.5
+    Q9H3Z4-S10-1-1	0.502
+    Q6GQQ9-S100-1-1	0.504
+    Q86YP4-S100-1-1	0.506
+    Q9H307-S100-1-1	0.508
+    Q8NEY1-S1000-1-1	0.51
+    Q13541-S101-1-1	0.512
+    O95785-S1012-2-1	0.514
+    O95785-S1017-2-1	0.516
+    Q9Y4G8-S1022-1-1	0.518
+    P35658-S1023-1-1	0.52
+
+    """
+
+    pass
+
