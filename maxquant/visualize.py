@@ -25,6 +25,11 @@ import matplotlib.cm as cm
  
 from matplotlib.patches import Ellipse
 
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 """
 Visualization tools for proteomic data, using standard Pandas dataframe structures
 from imported data. These functions make some assumptions about the structure of
@@ -40,6 +45,7 @@ from . import process
 def get_protein_id(s):
     return s.split(';')[0].split(' ')[0].split('_')[0] 
 
+
 def get_protein_ids(s):
     return [p.split(' ')[0].split('_')[0]  for p in s.split(';') ]
 
@@ -51,16 +57,20 @@ def get_protein_id_list(df):
  
     return list(set(protein_list))    
 
+
 def get_shortstr(s):
     return s.split(';')[0]
-    
+
+
 def get_index_list(l, ms):
     if type(ms) != list and type(ms) != tuple:
         ms = [ms]
     return [l.index(s) for s in ms if s in l]
-    
+
+
 def build_combined_label(sl, idxs):
     return ' '.join([get_shortstr(str(sl[n])) for n in idxs])
+
 
 def hierarchical_match(d, k, default=None):
     '''
@@ -80,6 +90,7 @@ def hierarchical_match(d, k, default=None):
             return d[key]
 
     return default
+
 
 def chunks(seq, num):
     avg = len(seq) / float(num)
@@ -211,7 +222,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
         if show_covariance_ellipse and data.shape[1] > 2:
             cov = data[[pc1, pc2], :].T
             ellip = plot_point_cov(cov, nstd=2, linestyle='dashed', linewidth=0.5, edgecolor=fc,
-                                   alpha=0.5)  #**kwargs for ellipse styling
+                                   alpha=0.8)  #**kwargs for ellipse styling
             ax.add_artist(ellip)
 
     if label_scores:
@@ -267,7 +278,7 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
     
     scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
-    scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores)
+    scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
     weights_ax = []
     
     for pc in range(0, weights.shape[1]):
@@ -665,16 +676,24 @@ def sitespeptidesproteins(df, labels=None, colors=None, site_localization_probab
     return ax
     
     
-def rankintensity(df, colors=None, splits=5, number_of_annotations=5, calculate_go_enrichment=True):
+def find_nearest_idx(array,value):
+    array = array.copy()
+    array[np.isnan(array)] = 1
+    idx = (np.abs(array-value)).argmin()
+    return idx
+
+
+def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, show_go_enrichment=True, go_segments=5, go_enrichment='function',  max_go_labels=8):
     if colors is None:
         colors = [
-            "#aec7e8",
-            "#ffbb78",
-            "#98df8a",
-            "#ff9896",
-            "#c5b0d5",
-            "#f7b6d2",
-            "#9edae5",
+            "#1f77b4",
+            "#ff7f0e",
+            "#2ca02c",
+            "#d62728",
+            "#9467bd",
+            "#8c564b",
+            "#bcbd22",
+            "#17becf",
         ] * 3  # Duplicate
 
 
@@ -682,15 +701,30 @@ def rankintensity(df, colors=None, splits=5, number_of_annotations=5, calculate_
     ax = fig.add_subplot(1,1,1)
 
     labels = df['Protein names'].values
+
+    if ids_from:
+        ids = df[ids_from]
+    else:
+        if 'Proteins' in df.columns.values:
+            ids = df['Protein']
+        elif 'Protein IDs' in df.columns.values:
+            ids = df['Protein IDs']
+        else:
+            ids = None
+
     y = np.log10(df['Intensity'].values)
 
     filt = ~np.array( np.isnan(y) | np.isinf(y) )
     y = y[filt]
     labels = labels[filt]
+    if ids is not None:
+        ids = ids[filt]
 
     sort = np.argsort(y)
     y = y[sort]
     labels = labels[sort]
+    if ids is not None:
+        ids = ids[sort]
 
     x_max = y.shape[0]
     x = np.arange(x_max)
@@ -699,17 +733,39 @@ def rankintensity(df, colors=None, splits=5, number_of_annotations=5, calculate_
     ax.set_ylabel("Peptide intensity ($log_{10}$)")
     ax.set_xlabel("Peptide rank")
 
-    def annotate_obj(ax, n, labels, xs, ys, xf, yf, yinc, ha):
-        ayf = yf
+    # Defines ranges over which text can be slotted in (avoid y overlapping)
+    slot_size = 0.03 # FIXME: We should calculate this
+    text_y_slots = np.arange(0.1, 0.95, slot_size)
+
+    # Build set of standard x offsets at defined y data points
+    # For each y slot, find the (nearest) data y, therefore the x
+    text_x_slots = []
+    inv =  ax.transLimits.inverted()
+    for ys in text_y_slots:
+        _, yd = inv.transform( (0, ys) )
+        text_x_slots.append(   ax.transLimits.transform( (x[find_nearest_idx(y, yd)], 0 ) )[0] )
+    text_x_slots = np.array(text_x_slots)
+
+    text_x_slots[ text_y_slots < 0.5 ] += 0.15
+    text_x_slots[ text_y_slots > 0.5 ] -= 0.15
+
+
+    def annotate_obj(ax, n, labels, xs, ys, idx, yd, ha):
         ni = 1
         previous = []
         for l, xi, yi in zip(labels, xs, ys):
             if type(l) == str and l not in previous:
-                ax.text(xf, ayf, get_shortstr(l), transform=ax.transAxes,  ha=ha, va='center', color='r')
-                ax.annotate("", xy=(xi, yi), xycoords='data',  xytext=(xf, ayf), textcoords='axes fraction',
-                            va='center', color='r',
-                            arrowprops=dict(arrowstyle='-', connectionstyle="arc3", ec='k', lw=1), zorder=100)
-                ayf += yinc
+                if text_y_slots[idx]:
+                    axf = text_x_slots[idx]
+                    ayf = text_y_slots[idx]
+                    text_x_slots[idx] = np.nan
+                    text_y_slots[idx] = np.nan
+
+                    ax.text(axf, ayf, get_shortstr(l), transform=ax.transAxes,  ha=ha, va='center', color='k')
+                    ax.annotate("", xy=(xi, yi), xycoords='data',  xytext=(axf, ayf), textcoords='axes fraction',
+                                va='center', color='k',
+                                arrowprops=dict(arrowstyle='-', connectionstyle="arc3", ec='k', lw=1), zorder=100)
+                idx += yd
                 ni += 1
                 previous.append(l)
 
@@ -718,27 +774,66 @@ def rankintensity(df, colors=None, splits=5, number_of_annotations=5, calculate_
 
     _n = np.min( [labels.shape[0], 20] )
 
-    annotate_obj(ax, number_of_annotations, labels[-1:-_n:-1], x[-1:-_n:-1], y[-1:-_n:-1], 0.7, 0.95, -0.03, 'right')
-    annotate_obj(ax, number_of_annotations, labels[:_n], x[:_n], y[:_n], 0.3, 0.1, 0.03, 'left')
+    annotate_obj(ax, number_of_annotations, labels[-1:-_n:-1], x[-1:-_n:-1], y[-1:-_n:-1], -1, -1, 'right')
+    annotate_obj(ax, number_of_annotations, labels[:_n], x[:_n], y[:_n], 0, +1, 'left')
 
+    if go_enrichment and ids is not None:
 
-    if calculate_go_enrichment:
-        splits = splits
         shrink = x_max / 30
 
-        for n, c in enumerate(chunks(x, splits)):
-            if n+1 < splits:
+        for n, c in enumerate(chunks(x, go_segments)):
+
+            gids = ids[c]
+            go = analysis.go_enrichment(gids, enrichment=go_enrichment)
+
+            labels = [gi[1] for gi in go.index[:max_go_labels]]
+            # Get the xrange of values for this og
+
+            if n+1 < go_segments:
                 c = c[:-shrink]
             if n > 0:
                 c = c[shrink:]
 
+
+            yr = ax.transLimits.transform( (0, y[c[0]]) )[1], ax.transLimits.transform( (0, y[c[-1]]) )[1]
+            # find axis label point for both start and end
+            print(yr)
+            if yr[0] < 0.5:
+                yr = yr[0]-slot_size, yr[1]
+            else:
+                yr = yr[0]+slot_size, yr[1]
+
+            yr = find_nearest_idx(text_y_slots, yr[0]), find_nearest_idx(text_y_slots, yr[1])
+
+
+
+            yrange = list(range(yr[0], yr[1]))
+
+            # Center ish
+            if len(yrange) > len(labels):
+                crop = (len(yrange) - len(labels))//2
+                if crop > 1:
+                    yrange = yrange[crop:-crop]
+
+            # display ranked top to bottom
+            for idx, l in zip(yrange, labels):
+                axf = text_x_slots[idx]
+                ayf = text_y_slots[idx]
+                text_x_slots[idx] = np.nan
+                text_y_slots[idx] = np.nan
+
+                if ayf > 0.5:
+                    ha = 'right'
+                else:
+                    ha = 'left'
+                ax.text(axf, ayf, l, transform=ax.transAxes, ha=ha, color=colors[n])
+
+
             # Calculate GO enrichment terms for each region?
-            ax.plot(c, y[c], lw=25, alpha=0.8, solid_capstyle='round', zorder=99, color=colors[n])
-
-
-
+            ax.plot(c, y[c], lw=25, alpha=0.5, solid_capstyle='round', zorder=99, color=colors[n])
 
     return ax
+
 
     
     

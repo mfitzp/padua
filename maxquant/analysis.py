@@ -1,7 +1,7 @@
 __author__ = 'Fitzp002'
 import pandas as pd
 import numpy as np
-
+import requests
 
 try:
     import sklearn
@@ -11,6 +11,16 @@ else:
     from sklearn.decomposition import PCA    
 
 from . import filters
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
+
+def get_protein_id(s):
+    return str(s).split(';')[0].split(' ')[0].split('_')[0]
+
 
 def correlation(df):
     """
@@ -123,3 +133,24 @@ def modifiedaminoacids(df):
 
     return total_aas, quants
 
+
+def go_enrichment(l, enrichment='function', summary=True, fdr=0.05):
+
+    data = "\n".join([get_protein_id(s) for s in l])
+    r = requests.post("http://www.pantherdb.org/webservices/garuda/enrichment.jsp", data={
+            'organism':"Homo sapiens",
+            'type':'enrichment',
+            'enrichmentType': enrichment},
+            files = {
+            'geneList': ('genelist.txt', StringIO(data) ),
+
+            }
+        )
+
+    go = pd.read_csv(StringIO(r.text), sep='\t', skiprows=5, lineterminator='\n', header=None)
+    go.columns = ["GO", "Name", "Protein", "P"]
+    go = go.set_index(["GO","Name"])
+    if summary:
+        go = go.drop("Protein", axis=1).mean(axis=0, level=["GO","Name"])
+
+    return go[ go["P"] < fdr ].sort("P", ascending=True)
