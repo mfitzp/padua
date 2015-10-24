@@ -797,7 +797,7 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
 
             yr = ax.transLimits.transform( (0, y[c[0]]) )[1], ax.transLimits.transform( (0, y[c[-1]]) )[1]
             # find axis label point for both start and end
-            print(yr)
+
             if yr[0] < 0.5:
                 yr = yr[0]-slot_size, yr[1]
             else:
@@ -868,11 +868,15 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
         return edges
 
+    dfc = df.copy()
+
     if z_score:
-        dfc = (df - df.median(axis=0)) / df.std(axis=0)            
-    else:
-        dfc = df.copy()
-        
+        dfc = (dfc - dfc.median(axis=0)) / dfc.std(axis=0)
+
+    # Remove nan/infs
+    dfc[np.isinf(dfc)] = 0
+    dfc[np.isnan(dfc)] = 0
+
     #dfc.dropna(axis=0, how='any', inplace=True)
     
     # make norm
@@ -957,7 +961,6 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
     if cluster_cols and n_col_clusters:
         edges = optimize_clusters(col_clusters, col_denD, n_col_clusters)
-        print(edges)
         for edge in edges:
             heatmapAX.axvline(edge +0.5, color='k', lw=3)
 
