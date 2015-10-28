@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '0.0.9'
+version = '0.1.0'
 
 setup(
     name='pyMaxQuant',
@@ -21,4 +21,13 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4'
     ],
+    install_requires=[
+        'numpy',
+        'scipy',
+        'matplotlib',
+        'pandas',
+        'statsmodels',
+        'matplotlib-venn',
+        'scikit-learn',
+    ]
 )
