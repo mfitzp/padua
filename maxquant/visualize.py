@@ -887,11 +887,15 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
         return edges
 
+    dfc = df.copy()
+
     if z_score:
-        dfc = (df - df.median(axis=0)) / df.std(axis=0)            
-    else:
-        dfc = df.copy()
-        
+        dfc = (dfc - dfc.median(axis=0)) / dfc.std(axis=0)
+
+    # Remove nan/infs
+    dfc[np.isinf(dfc)] = 0
+    dfc[np.isnan(dfc)] = 0
+
     #dfc.dropna(axis=0, how='any', inplace=True)
 
     # make norm
