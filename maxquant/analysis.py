@@ -89,7 +89,8 @@ def pca(df, n_components=2, mean_center=False, *args, **kwargs):
     weights.columns =  ['Weights on Principal Component %d' % (n+1) for n in range(0, weights.shape[1])]
        
     return scores, weights
-    
+
+
     
 def enrichment(df):
 
@@ -111,7 +112,7 @@ def enrichment(df):
         groups.append(c)
         #totals.append(total)
 
-    return pd.DataFrame(np.array(values).T, columns=groups, index=["",""])    
+    return pd.DataFrame(np.array(values).T, columns=groups, index=["",""])
     
 
 def sitespeptidesproteins(df, site_localization_probability=0.75):
@@ -119,7 +120,7 @@ def sitespeptidesproteins(df, site_localization_probability=0.75):
     peptides = set(df['Sequence window'])
     proteins = set([p.split(';')[0] for p in df['Proteins']])
     return len(sites), len(peptides), len(proteins)
-    
+
 
 def modifiedaminoacids(df):
     amino_acids = list(df['Amino acid'].values)
@@ -134,12 +135,17 @@ def modifiedaminoacids(df):
     return total_aas, quants
 
 
-def go_enrichment(l, enrichment='function', summary=True, fdr=0.05):
+def go_enrichment(df, enrichment='function', summary=True, fdr=0.05, ids_from=['Proteins','Protein IDs']):
 
-    data = "\n".join([get_protein_id(s) for s in l])
+    if isinstance(df, pd.DataFrame) or isinstance(df, pd.Series):
+        l = list(set(ids_from) & set(df.index.names))[0]
+        data = "\n".join([get_protein_id(s) for s in df.index.get_level_values(l)])
+    else:
+        data = "\n".join([get_protein_id(s) for s in l])
+
     r = requests.post("http://www.pantherdb.org/webservices/garuda/enrichment.jsp", data={
-            'organism':"Homo sapiens",
-            'type':'enrichment',
+            'organism': "Homo sapiens",
+            'type': 'enrichment',
             'enrichmentType': enrichment},
             files = {
             'geneList': ('genelist.txt', StringIO(data) ),
@@ -153,4 +159,7 @@ def go_enrichment(l, enrichment='function', summary=True, fdr=0.05):
     if summary:
         go = go.drop("Protein", axis=1).mean(axis=0, level=["GO","Name"])
 
-    return go[ go["P"] < fdr ].sort("P", ascending=True)
+    if fdr:
+        go = go[ go["P"] < fdr ]
+
+    return go.sort("P", ascending=True)

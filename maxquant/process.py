@@ -321,7 +321,12 @@ def fold_columns_to_rows(df, levels_from=2):
             concats.append(dfcc)
 
     # Concatenate
-    df = pd.concat(concats, axis=1)
-    df.sort_index(axis=1, inplace=True)
-    return df
+    dfc = pd.concat(concats, axis=1)
+    dfc.sort_index(axis=1, inplace=True)
+
+    # Fix name if collapsed
+    if dfc.index.name is None:
+        dfc.index.name = df.index.names[-1]
+
+    return dfc
         

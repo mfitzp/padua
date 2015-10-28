@@ -240,7 +240,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     return ax
 
 
-def _pca_weights(weights, pc, threshold=None, label_weights=None, **kwargs):
+def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weights=None, **kwargs):
     
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1,1,1)
@@ -251,15 +251,20 @@ def _pca_weights(weights, pc, threshold=None, label_weights=None, **kwargs):
     ax.set_aspect(1./ax.get_data_ratio())
     
     wts = weights.iloc[:, pc]
-    
+
     if threshold:
-        FILTER_UP = wts.values >= threshold
-        FILTER_DOWN = wts.values <= -threshold
-        FILTER = FILTER_UP | FILTER_DOWN
-        
-        wti = np.arange(0, weights.shape[0])
-        wti = wti[FILTER]
+        if label_threshold is None:
+            label_threshold = threshold
+
         if label_weights:
+
+            FILTER_UP = wts.values >= label_threshold
+            FILTER_DOWN = wts.values <= -label_threshold
+            FILTER = FILTER_UP | FILTER_DOWN
+
+            wti = np.arange(0, weights.shape[0])
+            wti = wti[FILTER]
+
             idxs = get_index_list( wts.index.names, label_weights )
             for x in wti:
                 y = wts.iloc[x]
@@ -274,7 +279,7 @@ def _pca_weights(weights, pc, threshold=None, label_weights=None, **kwargs):
     return ax
     
 
-def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=True, *args, **kwargs):
+def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=True, *args, **kwargs):
     
     scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
@@ -282,7 +287,7 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
     weights_ax = []
     
     for pc in range(0, weights.shape[1]):
-        weights_ax.append( _pca_weights(weights, pc, threshold=threshold, label_weights=label_weights) )
+        weights_ax.append( _pca_weights(weights, pc, threshold=threshold, label_threshold=label_threshold, label_weights=label_weights) )
     
     if return_df:
         return scores, weights
@@ -404,6 +409,8 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
     xmin, xmax = ax.get_xlim()
     xlim = np.max(np.abs([xmin, xmax]))
     ax.set_xlim((-xlim, xlim))
+    _, ymax = ax.get_ylim()
+    ax.set_ylim((0, ymax))
 
     if title:
         ax.set_title(title)
@@ -476,7 +483,7 @@ def modificationlocalization(df):
     
     ax = df.plot(kind='pie', y=0, colors=colors)
 
-    ax.legend(['Class I (> 0.75)', 'Class II (> 0.5 ≤ 0.75)', 'Class II (> 0.25, ≤ 0.5)'], 
+    ax.legend(['Class I (> 0.75)', 'Class II (> 0.5 ≤ 0.75)', 'Class III (> 0.25, ≤ 0.5)'],
               loc='upper left', bbox_to_anchor=(1.0, 1.0))
     ax.set_ylabel('')
     ax.set_xlabel('')
@@ -514,9 +521,9 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
 
         if subplots:
             gs = gridspec.GridSpec(1, len(subplots), width_ratios=[dfi[sp].shape[1] for sp in subplots])     
-        elif isinstance(dfi.columns, pd.MultiIndex) and len(dfp.columns.levels) > 1:
+        elif isinstance(dfi.columns, pd.MultiIndex) and len(dfi.columns.levels) > 1:
             subplotl = dfi.columns.levels[0]
-            gs = gridspec.GridSpec(1, len(subplots), width_ratios=[dfi[sp].shape[1] for sp in subplots]) 
+            gs = gridspec.GridSpec(1, len(subplotl), width_ratios=[dfi[sp].shape[1] for sp in subplots])
         else:
             # Subplots
             subplotl = [None]
@@ -683,7 +690,7 @@ def find_nearest_idx(array,value):
     return idx
 
 
-def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, show_go_enrichment=True, go_segments=5, go_enrichment='function',  max_go_labels=8):
+def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, show_go_enrichment=True, go_segments=5, go_enrichment='function', go_max_labels=8, go_fdr=0.05):
     if colors is None:
         colors = [
             "#1f77b4",
@@ -695,7 +702,6 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
             "#bcbd22",
             "#17becf",
         ] * 3  # Duplicate
-
 
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1)
@@ -743,11 +749,11 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
     inv =  ax.transLimits.inverted()
     for ys in text_y_slots:
         _, yd = inv.transform( (0, ys) )
-        text_x_slots.append(   ax.transLimits.transform( (x[find_nearest_idx(y, yd)], 0 ) )[0] )
+        text_x_slots.append( ax.transLimits.transform( (x[find_nearest_idx(y, yd)], 0 ) )[0] )
     text_x_slots = np.array(text_x_slots)
 
-    text_x_slots[ text_y_slots < 0.5 ] += 0.15
-    text_x_slots[ text_y_slots > 0.5 ] -= 0.15
+    text_x_slots[text_y_slots < 0.5] += 0.15
+    text_x_slots[text_y_slots > 0.5] -= 0.15
 
 
     def annotate_obj(ax, n, labels, xs, ys, idx, yd, ha):
@@ -772,7 +778,7 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
             if ni > n:
                 break
 
-    _n = np.min( [labels.shape[0], 20] )
+    _n = np.min([labels.shape[0], 20])
 
     annotate_obj(ax, number_of_annotations, labels[-1:-_n:-1], x[-1:-_n:-1], y[-1:-_n:-1], -1, -1, 'right')
     annotate_obj(ax, number_of_annotations, labels[:_n], x[:_n], y[:_n], 0, +1, 'left')
@@ -783,21 +789,33 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
 
         for n, c in enumerate(chunks(x, go_segments)):
 
-            gids = ids[c]
-            go = analysis.go_enrichment(gids, enrichment=go_enrichment)
+            mask = np.zeros((len(ids),), dtype=bool)
+            mask[c] = True
+            # Comparison relative to background
+            gids = list(set(ids[mask]) - set(ids[~mask]))
+            go = analysis.go_enrichment(gids, enrichment=go_enrichment, fdr=go_fdr)
 
-            labels = [gi[1] for gi in go.index[:max_go_labels]]
+            labels = [gi[1] for gi in go.index]
+
+            # Filter out less specific GO terms where specific terms exist (simple text matching)
+            labels_f = []
+            for l in labels:
+                for ll in labels:
+                    if l in ll and l != ll:
+                        break
+                else:
+                    labels_f.append(l)
+            labels = labels_f[:go_max_labels]
+
             # Get the xrange of values for this og
-
             if n+1 < go_segments:
                 c = c[:-shrink]
             if n > 0:
                 c = c[shrink:]
 
-
             yr = ax.transLimits.transform( (0, y[c[0]]) )[1], ax.transLimits.transform( (0, y[c[-1]]) )[1]
+
             # find axis label point for both start and end
-            print(yr)
             if yr[0] < 0.5:
                 yr = yr[0]-slot_size, yr[1]
             else:
@@ -805,13 +823,11 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
 
             yr = find_nearest_idx(text_y_slots, yr[0]), find_nearest_idx(text_y_slots, yr[1])
 
-
-
             yrange = list(range(yr[0], yr[1]))
 
             # Center ish
             if len(yrange) > len(labels):
-                crop = (len(yrange) - len(labels))//2
+                crop = (len(yrange) - len(labels)) // 2
                 if crop > 1:
                     yrange = yrange[crop:-crop]
 
@@ -828,12 +844,10 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
                     ha = 'left'
                 ax.text(axf, ayf, l, transform=ax.transAxes, ha=ha, color=colors[n])
 
-
             # Calculate GO enrichment terms for each region?
             ax.plot(c, y[c], lw=25, alpha=0.5, solid_capstyle='round', zorder=99, color=colors[n])
 
     return ax
-
 
     
     
@@ -851,7 +865,10 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     def optimize_clusters(clusters, denD, target_n):
         target_n = target_n - 1 # We return edges; not regions
         threshold = np.max(clusters)
-        while True:
+        max_iterations = threshold
+
+        i = 0
+        while i < max_iterations:
             cc = sch.fcluster(clusters, threshold, 'distance')
             cco = cc[ denD['leaves'] ]
             edges = [n for n in range(cco.shape[0]-1) if cco[n] != cco[n+1]  ]
@@ -866,6 +883,8 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
             elif n_clusters > target_n:
                 threshold = int( threshold * 1.5 )
 
+            i += 1
+
         return edges
 
     if z_score:
@@ -874,13 +893,16 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
         dfc = df.copy()
         
     #dfc.dropna(axis=0, how='any', inplace=True)
-    
+
     # make norm
     vmin = dfc.min().min()
     vmax = dfc.max().max()
     vmax = max([vmax, abs(vmin)])  # choose larger of vmin and vmax
     vmin = vmax * -1
     my_norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+
+    df[np.isnan(df)] = 0
+    df[np.isinf(df)] = 0
 
     # dendrogram single color
     sch.set_link_color_palette(['black'])
@@ -957,7 +979,6 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
     if cluster_cols and n_col_clusters:
         edges = optimize_clusters(col_clusters, col_denD, n_col_clusters)
-        print(edges)
         for edge in edges:
             heatmapAX.axvline(edge +0.5, color='k', lw=3)
 

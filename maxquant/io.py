@@ -3,6 +3,7 @@ __author__ = 'mfitzp'
 import pandas as pd
 import numpy as np
 
+
 def read_maxquant(f):
     """
     Load the quantified table output from MaxQuant run, e.g.
