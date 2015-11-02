@@ -59,7 +59,7 @@ def get_protein_id_list(df):
 
 
 def get_shortstr(s):
-    return s.split(';')[0]
+    return str(s).split(';')[0]
 
 
 def get_index_list(l, ms):
@@ -322,9 +322,6 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
     if np.any(df.values < 0) and not is_log2:
         warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
 
-    if is_log2:
-        df = 2 ** df
-        
     if fillna:
         df = df.fillna(fillna)
         
@@ -333,8 +330,11 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
 
     # Calculate ratio between two groups
     g1, g2 = df[a].values, df[b].values
-    
-    dr = np.log2(  np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1) )
+
+    if is_log2:
+        dr = np.nanmean(g2, axis=1) - np.nanmean(g1, axis=1)
+    else:
+        dr = np.log2(np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1))
     
     # Calculate the p value between two groups (t-test)
     t, p = sp.stats.ttest_ind(g1.T, g2.T, equal_var=equal_var) # False = Welch
@@ -415,7 +415,7 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
     if title:
         ax.set_title(title)
     
-    return ax, p, _FILTER_IN
+    return ax, p, dr, _FILTER_IN
     
 
 def _bartoplabel(ax, name, mx, offset):
@@ -520,10 +520,11 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
         dfi = process.fold_columns_to_rows(dfi, levels_from=len(df.columns.names)-1)
 
         if subplots:
-            gs = gridspec.GridSpec(1, len(subplots), width_ratios=[dfi[sp].shape[1] for sp in subplots])     
+            gs = gridspec.GridSpec(1, len(subplots), width_ratios=[dfi[sp].shape[1] for sp in subplots])
+            subplotsl = subpplots
         elif isinstance(dfi.columns, pd.MultiIndex) and len(dfi.columns.levels) > 1:
             subplotl = dfi.columns.levels[0]
-            gs = gridspec.GridSpec(1, len(subplotl), width_ratios=[dfi[sp].shape[1] for sp in subplots])
+            gs = gridspec.GridSpec(1, len(subplotl), width_ratios=[dfi[sp].shape[1] for sp in subplotl])
         else:
             # Subplots
             subplotl = [None]
@@ -556,7 +557,6 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
             )
 
             ax.set_xlabel('')
-
             for n, c in enumerate(medians.columns.values):
                 if sp is None:
                     hier = []
@@ -574,7 +574,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
                 if ecol:
                     color = hierarchical_match(ecol, hier, None)
                     if color:
-                        dic['boxes'][n].set_edgecolor(  )
+                        dic['boxes'][n].set_edgecolor( color )
                 if hatch:
                     dic['boxes'][n].set_hatch( hierarchical_match(hatch, hier, '') )
 
@@ -690,26 +690,16 @@ def find_nearest_idx(array,value):
     return idx
 
 
-def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, show_go_enrichment=True, go_segments=5, go_enrichment='function', go_max_labels=8, go_fdr=0.05):
-    if colors is None:
-        colors = [
-            "#1f77b4",
-            "#ff7f0e",
-            "#2ca02c",
-            "#d62728",
-            "#9467bd",
-            "#8c564b",
-            "#bcbd22",
-            "#17becf",
-        ] * 3  # Duplicate
+def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=True, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None):
+
 
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1)
 
-    labels = df['Protein names'].values
+    labels = df[labels_from].values
 
-    if ids_from:
-        ids = df[ids_from]
+    if go_ids_from:
+        ids = df[go_ids_from]
     else:
         if 'Proteins' in df.columns.values:
             ids = df['Protein']
@@ -733,9 +723,17 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
         ids = ids[sort]
 
     x_max = y.shape[0]
+    y_min, y_max = np.min(y), np.max(y)
+    yrange = y_max-y_min
+
     x = np.arange(x_max)
 
-    ax.scatter( x, y, s=25, c='k', lw=0, zorder=100)
+    ax.set_xlim( (-x_max//3,  x_max+x_max//3) )
+    ax.set_ylim( (y_min-1,  y_max+1) )
+
+    # Set the dimensions so we can plot the labels correctly.
+    ax.scatter(x, y, alpha=0, zorder=-1)
+
     ax.set_ylabel("Peptide intensity ($log_{10}$)")
     ax.set_xlabel("Peptide rank")
 
@@ -743,6 +741,8 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
     slot_size = 0.03 # FIXME: We should calculate this
     text_y_slots = np.arange(0.1, 0.95, slot_size)
 
+
+    text_y_cross = 0.55
     # Build set of standard x offsets at defined y data points
     # For each y slot, find the (nearest) data y, therefore the x
     text_x_slots = []
@@ -752,28 +752,35 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
         text_x_slots.append( ax.transLimits.transform( (x[find_nearest_idx(y, yd)], 0 ) )[0] )
     text_x_slots = np.array(text_x_slots)
 
-    text_x_slots[text_y_slots < 0.5] += 0.15
-    text_x_slots[text_y_slots > 0.5] -= 0.15
-
+    text_x_slots[text_y_slots < text_y_cross] += 0.15
+    text_x_slots[text_y_slots > text_y_cross] -= 0.15
 
     def annotate_obj(ax, n, labels, xs, ys, idx, yd, ha):
         ni = 1
-        previous = []
+        previous = {}
         for l, xi, yi in zip(labels, xs, ys):
-            if type(l) == str and l not in previous:
-                if text_y_slots[idx]:
+            if type(l) == str:
+                l = get_shortstr(l)
+
+                if l in previous: # Use previous text slot for annotation; skip annotation part
+                    axf, ayf = previous[l]
+
+                elif text_y_slots[idx]:
                     axf = text_x_slots[idx]
                     ayf = text_y_slots[idx]
                     text_x_slots[idx] = np.nan
                     text_y_slots[idx] = np.nan
 
-                    ax.text(axf, ayf, get_shortstr(l), transform=ax.transAxes,  ha=ha, va='center', color='k')
-                    ax.annotate("", xy=(xi, yi), xycoords='data',  xytext=(axf, ayf), textcoords='axes fraction',
-                                va='center', color='k',
-                                arrowprops=dict(arrowstyle='-', connectionstyle="arc3", ec='k', lw=1), zorder=100)
-                idx += yd
-                ni += 1
-                previous.append(l)
+                    ax.text(axf, ayf, l, transform=ax.transAxes,  ha=ha, va='center', color='k')
+
+                    idx += yd
+                    ni += 1
+
+                    previous[l] = (axf, ayf)
+
+                ax.annotate("", xy=(xi, yi), xycoords='data',  xytext=(axf, ayf), textcoords='axes fraction',
+                        va='center', color='k',
+                        arrowprops=dict(arrowstyle='-', connectionstyle="arc3", ec='k', lw=1), zorder=100)
 
             if ni > n:
                 break
@@ -785,70 +792,80 @@ def rankintensity(df, colors=None, ids_from = None, number_of_annotations=5, sho
 
     if go_enrichment and ids is not None:
 
-        shrink = x_max / 30
+        # Calculate orders of magnitude (range)
+        oomr = int(np.round(np.min(y))), int(np.round(np.max(y)))
 
-        for n, c in enumerate(chunks(x, go_segments)):
+        # First -1, last +1
+        segments = [[x, x+1] for x in range(*oomr)]
+        segments[0][0] -= 3
+        segments[-1][1] += 3
 
-            mask = np.zeros((len(ids),), dtype=bool)
-            mask[c] = True
+        if not isinstance(colors, list):
+            if not isinstance(colors, tuple):
+                colors = ('#1f77b4', '#d62728')
+            # Build a continuous scale from low to high
+            cmap = mpl.colors.LinearSegmentedColormap.from_list('custom', list(colors), len(segments))
+            colors = [mpl.colors.rgb2hex(cmap(n)) for n in range(len(segments))]
+
+        for n, (s, e) in enumerate(segments):
+            mask = (y > s) & (y < e)
+            c = x[mask]
+
             # Comparison relative to background
             gids = list(set(ids[mask]) - set(ids[~mask]))
             go = analysis.go_enrichment(gids, enrichment=go_enrichment, fdr=go_fdr)
 
-            labels = [gi[1] for gi in go.index]
+            if go is not None:
+                labels = [gi[1] for gi in go.index]
 
-            # Filter out less specific GO terms where specific terms exist (simple text matching)
-            labels_f = []
-            for l in labels:
-                for ll in labels:
-                    if l in ll and l != ll:
-                        break
+                # Filter out less specific GO terms where specific terms exist (simple text matching)
+                labels_f = []
+                for l in labels:
+                    for ll in labels:
+                        if l in ll and l != ll:
+                            break
+                    else:
+                        labels_f.append(l)
+                labels = labels_f[:go_max_labels]
+
+                yr = ax.transLimits.transform( (0, y[c[0]]) )[1], ax.transLimits.transform( (0, y[c[-1]]) )[1]
+
+                # find axis label point for both start and end
+                if yr[0] < text_y_cross:
+                    yr = yr[0]-slot_size, yr[1]
                 else:
-                    labels_f.append(l)
-            labels = labels_f[:go_max_labels]
+                    yr = yr[0]+slot_size, yr[1]
 
-            # Get the xrange of values for this og
-            if n+1 < go_segments:
-                c = c[:-shrink]
-            if n > 0:
-                c = c[shrink:]
+                yr = find_nearest_idx(text_y_slots, yr[0]), find_nearest_idx(text_y_slots, yr[1])
 
-            yr = ax.transLimits.transform( (0, y[c[0]]) )[1], ax.transLimits.transform( (0, y[c[-1]]) )[1]
+                yrange = list(range(yr[0], yr[1]))
 
-            # find axis label point for both start and end
-            if yr[0] < 0.5:
-                yr = yr[0]-slot_size, yr[1]
-            else:
-                yr = yr[0]+slot_size, yr[1]
+                # Center ish
+                if len(yrange) > len(labels):
+                    crop = (len(yrange) - len(labels)) // 2
+                    if crop > 1:
+                        yrange = yrange[crop:-crop]
 
-            yr = find_nearest_idx(text_y_slots, yr[0]), find_nearest_idx(text_y_slots, yr[1])
+                # display ranked top to bottom
+                for idx, l in zip(yrange, labels):
+                    axf = text_x_slots[idx]
+                    ayf = text_y_slots[idx]
+                    text_x_slots[idx] = np.nan
+                    text_y_slots[idx] = np.nan
 
-            yrange = list(range(yr[0], yr[1]))
-
-            # Center ish
-            if len(yrange) > len(labels):
-                crop = (len(yrange) - len(labels)) // 2
-                if crop > 1:
-                    yrange = yrange[crop:-crop]
-
-            # display ranked top to bottom
-            for idx, l in zip(yrange, labels):
-                axf = text_x_slots[idx]
-                ayf = text_y_slots[idx]
-                text_x_slots[idx] = np.nan
-                text_y_slots[idx] = np.nan
-
-                if ayf > 0.5:
-                    ha = 'right'
-                else:
-                    ha = 'left'
-                ax.text(axf, ayf, l, transform=ax.transAxes, ha=ha, color=colors[n])
+                    if ayf > text_y_cross:
+                        ha = 'right'
+                    else:
+                        ha = 'left'
+                    ax.text(axf, ayf, l, transform=ax.transAxes, ha=ha, color=colors[n])
 
             # Calculate GO enrichment terms for each region?
-            ax.plot(c, y[c], lw=25, alpha=0.5, solid_capstyle='round', zorder=99, color=colors[n])
+            ax.scatter(x[mask], y[mask], s=15, c=colors[n], lw=0, zorder=100)
+
+    else:
+            ax.scatter(x, y, s=15, c='k', lw=0, zorder=100)
 
     return ax
-
     
     
 def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=True, method='ward'):
@@ -1012,5 +1029,62 @@ def correlation(df, cm=cm.Reds, vmin=None, vmax=None):
 
     i = ax.imshow(data, cmap=cm, vmin=vmin, vmax=vmax, interpolation='none')
     fig.colorbar(i)
+
+    return fig
+
+
+def comparedist(df1, df2, bins=50):
+    """
+    Compare two distributions with visualisations of:
+     - individual and combined distributions\
+     - distribution of non-common values
+     - distribution of non-common values vs. each side
+
+    Plot distribution as area (fill_between) + mean, median vertical bars
+    """
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(30, 10))
+
+    xr = np.nanmin( [np.nanmin(df1), np.nanmin(df2)] ), np.nanmax( [np.nanmax(df1), np.nanmax(df2)] )
+
+    def areadist(ax, v, xr, c, bins=100, by=None, alpha=1):
+        """
+        Plot the histogram distribution but as an area plot
+        """
+        y, x = np.histogram(v[~np.isnan(v)], bins)
+        x = x[:-1]
+
+        if by is None:
+            by = np.zeros( (bins, ) )
+
+        ax.fill_between(x, y, by, facecolor=c, alpha=alpha)
+        return y
+
+    ax1.set_title('Distributions of A and B')
+    areadist(ax1, df2.values, xr, c='r', bins=bins)
+    areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3)
+    ax1.set_xlabel('Value')
+    ax1.set_ylabel('Count')
+
+    ax2.set_title('Distributions of A and values unique to B')
+    # Calculate what is different isolate those values
+    areadist(ax2, df2.values[ df2.values != df1.values ], xr, c='r', bins=bins)
+    areadist(ax2, df1.values, xr, c='k', bins=bins, alpha=0.3)
+    ax2.set_xlabel('Value')
+    ax2.set_ylabel('Count')
+
+    # Calculate (at the lowest column index level) the difference between
+    # distribution of unique values, vs those in common
+    # Get indices of difference
+    dfc= df1.copy()
+    dfc[:] = (df2.values != df1.values).astype(int)
+    for i in dfc.columns.values:
+        dfc[i[:-1]] = np.max(dfc[i[:-1]].values, axis=1)
+
+    ax3.set_title('Distributions of associated values of A and substituted values in B')
+    areadist(ax3, df2.values[ df2.values != df1.values ], xr, c='r')
+    areadist(ax3, df1.values[ dfc.values == 1 ], xr, c='k', alpha=0.3)
+    ax3.set_xlabel('Value')
+    ax3.set_ylabel('Count')
 
     return fig

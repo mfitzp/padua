@@ -141,7 +141,7 @@ def go_enrichment(df, enrichment='function', summary=True, fdr=0.05, ids_from=['
         l = list(set(ids_from) & set(df.index.names))[0]
         data = "\n".join([get_protein_id(s) for s in df.index.get_level_values(l)])
     else:
-        data = "\n".join([get_protein_id(s) for s in l])
+        data = "\n".join([get_protein_id(s) for s in df])
 
     r = requests.post("http://www.pantherdb.org/webservices/garuda/enrichment.jsp", data={
             'organism': "Homo sapiens",
@@ -153,7 +153,11 @@ def go_enrichment(df, enrichment='function', summary=True, fdr=0.05, ids_from=['
             }
         )
 
-    go = pd.read_csv(StringIO(r.text), sep='\t', skiprows=5, lineterminator='\n', header=None)
+    try:
+        go = pd.read_csv(StringIO(r.text), sep='\t', skiprows=5, lineterminator='\n', header=None)
+    except ValueError:
+        return None
+
     go.columns = ["GO", "Name", "Protein", "P"]
     go = go.set_index(["GO","Name"])
     if summary:

@@ -113,7 +113,7 @@ def write_phosphopath(df, f):
     phdf.to_csv(f, sep='\t', index=None, header=None)
 
 
-def write_phosphopath_ratio(df, f, a=None, b=None):
+def write_phosphopath_ratio(df, f, v, a=None, b=None):
     """
     Write out the data frame ratio between two groups
     protein-Rsite-multiplicity-timepoint
@@ -132,5 +132,33 @@ def write_phosphopath_ratio(df, f, a=None, b=None):
 
     """
 
-    pass
+    proteins = [get_protein_id(k) for k in df.index.get_level_values('Proteins')]
+    amino_acids = df.index.get_level_values('Amino acid')
+    positions = [get_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
+    multiplicity = [k[-1] for k in df.index.get_level_values('Multiplicity')]
+    apos = ["%s%s" % x for x in zip(amino_acids, positions)]
+    prar = ["%s-%s-1-%s" % x for x in zip(proteins, apos, multiplicity)]
+
+    phdf = pd.DataFrame(np.array(list(zip(prar, v))))
+    phdf.columns = ["ID", "Ratio"]
+    phdf.to_csv(f, sep='\t', index=None)
+
+
+def write_r(df, f, sep=",", index_join="@", columns_join="."):
+    """
+    Export dataframe in a format easily importable to R
+
+    Index fields are joined with "@" and column fields by "." by default.
+    :param df:
+    :param f:
+    :param index_join:
+    :param columns_join:
+    :return:
+    """
+
+    df = df.copy()
+    df.index = ["@".join([str(s) for s in v]) for v in df.index.values]
+    df.columns = [".".join([str(s) for s in v]) for v in df.index.values]
+    df.to_csv(f, sep=sep)
+
 
