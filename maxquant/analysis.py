@@ -22,7 +22,7 @@ def get_protein_id(s):
     return str(s).split(';')[0].split(' ')[0].split('_')[0]
 
 
-def correlation(df):
+def correlation(df, rowvar=False):
     """
     Calculate column-wise Pearson correlations
 
@@ -36,25 +36,9 @@ def correlation(df):
     # of the columns (filled with na for all values)
     df = df.copy()
     df[ np.isinf(df) ] = np.nan
+    df[ np.isnan(df) ] = 0
 
-    n = df.shape[1]
-
-    cdf = np.zeros((n, n))
-    cdf[ cdf == 0] = np.nan
-
-    last = -1
-
-    for y in range(n):
-        for x in range(y, n):
-            if x == y:
-                r = 1
-            else:
-                data = df.ix[:, [x, y] ].dropna(how='any').values
-                r = np.corrcoef(data[:, 0], data[:, 1])[0, 1]
-
-            cdf[x, y] = r ** 2
-            cdf[y, x] = r ** 2
-
+    cdf = np.corrcoef(df.values, rowvar=False)
     cdf = pd.DataFrame(cdf)
     cdf.columns = df.columns
     cdf.index = df.columns
@@ -135,7 +119,7 @@ def modifiedaminoacids(df):
     return total_aas, quants
 
 
-def go_enrichment(df, enrichment='function', summary=True, fdr=0.05, ids_from=['Proteins','Protein IDs']):
+def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=True, fdr=0.05, ids_from=['Proteins','Protein IDs']):
 
     if isinstance(df, pd.DataFrame) or isinstance(df, pd.Series):
         l = list(set(ids_from) & set(df.index.names))[0]
@@ -144,7 +128,7 @@ def go_enrichment(df, enrichment='function', summary=True, fdr=0.05, ids_from=['
         data = "\n".join([get_protein_id(s) for s in df])
 
     r = requests.post("http://www.pantherdb.org/webservices/garuda/enrichment.jsp", data={
-            'organism': "Homo sapiens",
+            'organism': organism,
             'type': 'enrichment',
             'enrichmentType': enrichment},
             files = {

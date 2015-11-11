@@ -3,9 +3,11 @@ __author__ = 'mfitzp'
 import pandas as pd
 import numpy as np
 import scipy as sp
+
 from collections import defaultdict
 import re
 import itertools
+from .utils import qvalues
 
 import matplotlib
 import matplotlib as mpl
@@ -315,7 +317,7 @@ def enrichment(df):
     return axes
 
 
-def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  markersize=64, equal_var=True, s0=0.00001, is_log2=False, fillna=None, label_sig_only=True):
+def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels_from=None, labels_for=None, title=None,  markersize=64, equal_var=True, s0=0.00001, is_log2=False, fillna=None, label_sig_only=True):
 
     df = df.copy()
     
@@ -328,26 +330,48 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
     if labels_from is None:
         labels_from = list(df.index.names)
 
-    # Calculate ratio between two groups
-    g1, g2 = df[a].values, df[b].values
 
-    if is_log2:
-        dr = np.nanmean(g2, axis=1) - np.nanmean(g1, axis=1)
+    if b is not None:
+        # Calculate ratio between two groups
+        g1, g2 = df[a].values, df[b].values
+
+        if is_log2:
+            dr = np.nanmean(g2, axis=1) - np.nanmean(g1, axis=1)
+        else:
+            dr = np.log2(np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1))
+
+        g1 = np.ma.masked_where(np.isnan(g1), g1)
+        g2 = np.ma.masked_where(np.isnan(g1), g2)
+
+        # Calculate the p value between two groups (t-test)
+        t, p = sp.stats.mstats.ttest_ind(g1.T, g2.T, equal_var=equal_var) # False = Welch
+
     else:
-        dr = np.log2(np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1))
-    
-    # Calculate the p value between two groups (t-test)
-    t, p = sp.stats.ttest_ind(g1.T, g2.T, equal_var=equal_var) # False = Welch
-    
-    
+        g1 = df[a].values
+        dr = np.nanmean(g1, axis=1)
+
+        # Calculate the p value one sample t
+        g1 = np.ma.masked_where(np.isnan(g1), g1)
+        t, p = sp.stats.mstats.ttest_1samp(g1.T, popmean=0)
+
+
+    p = np.array(p) # Unmask
+
     fig = plt.figure()
     fig.set_size_inches(10,10)
 
     ax = fig.add_subplot(1,1,1)
-    
+
+    if estimate_qvalues:
+        p[~np.isnan(p)] = qvalues(p[~np.isnan(p)])
+        ax.set_ylabel('-log$_{10}$(Q)')
+    else:
+        ax.set_ylabel('-log$_{10}$(p)')
+
+
     # There are values below the fdr
     
-    s0x, s0y, s0fn = calculate_s0_curve(s0, fdr, np.nanmin(p), 1, np.nanmax(np.abs(dr)), curve_interval=0.001)
+    s0x, s0y, s0fn = calculate_s0_curve(s0, fdr, min(fdr/2, np.nanmin(p)), np.log2(threshold), np.nanmax(np.abs(dr)), curve_interval=0.001)
     ax.plot(s0x, -np.log10(s0y), 'r', lw=1 )
     ax.plot(-s0x, -np.log10(s0y), 'r', lw=1 )
 
@@ -384,10 +408,12 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
         
         ax.scatter(dr[f], -np.log10(p[f]), c=c, s=s[f], linewidths=0, alpha=0.5)
     
+    _FILTER_OUT1 = _FILTER_OUT & (np.array(p) > fdr)
+    scatter(ax, _FILTER_OUT1, 'grey', alpha=0.3)
 
-    scatter(ax, _FILTER_OUT, 'grey', alpha=0.3)
+    _FILTER_OUT1 = _FILTER_OUT & (np.array(p) <= fdr)
+    scatter(ax, _FILTER_OUT1, 'blue', alpha=0.3)
 
-    
     if labels_for:
         idxs = get_index_list( df.index.names, labels_from )
         for shown, label, x, y in zip( _FILTER_IN , df.index.values, dr, -np.log10(p)):
@@ -399,9 +425,9 @@ def volcano(df, a, b, fdr=0.05, labels_from=None, labels_for=None, title=None,  
                     r, ha, ofx, ofy =  (30, 'left', 0.15, 0.02) if x >= 0 else (-30, 'right', -0.15, 0.02)
                     t = ax.text(x+ofx, y+ofy, label , rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
 
-    scatter(ax, _FILTER_IN, 'blue')
+    scatter(ax, _FILTER_IN, 'red')
     
-    ax.set_ylabel('-log$_{10}$(p)')
+
     ax.set_xlabel('log$_2$ ratio')
 
     
@@ -648,11 +674,13 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
         
         
     if df3 is not None:
-        ax = mplv.venn3([s1,s2,s3], set_labels=labels)
+        vn = mplv.venn3([s1,s2,s3], set_labels=labels)
         intersection = s1 & s2 & s3
     else:
-        ax = mplv.venn2([s1,s2], set_labels=labels)
+        vn = mplv.venn2([s1,s2], set_labels=labels)
         intersection = s1 & s2
+
+    ax = plt.gca()
 
     if return_intersection:
         return ax, intersection
@@ -1013,7 +1041,7 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     return fig
 
 
-def correlation(df, cm=cm.Reds, vmin=None, vmax=None):
+def correlation(df, cm=cm.RdBu_r, vmin=None, vmax=None):
     data = analysis.correlation(df).values
 
     # Plot the distributions

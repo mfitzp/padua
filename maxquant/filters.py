@@ -77,11 +77,17 @@ def minimum_valid_values_in_any_group(df, levels=None, n=1, invalid=np.nan):
     
     dfc = dfx.astype(int).sum(axis=1, level=levels)
     
-    dfm = dfc.max(axis=1) > n
+    dfm = dfc.max(axis=1) >= n
     
     mask = dfm.values
     
     return df.iloc[mask, :]
+
+
+
+
+
+
 
 def search(df, match, columns=['Proteins','Protein names','Gene names']):
     """
