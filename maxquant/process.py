@@ -331,7 +331,7 @@ def fold_columns_to_rows(df, levels_from=2):
     return dfc
 
 
-def impute_from_gaussian(df, width=0.3, down_shift=1.8, prefix="Intensity "):
+def impute_from_gaussian(df, width=0.0, down_shift=0.0, prefix="Intensity "):
     """
     Impute missing values by drawing from a normal distribution
 
