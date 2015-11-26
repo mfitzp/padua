@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 
-def read_maxquant(f):
+def read_maxquant(f, header=0, **kwargs):
     """
     Load the quantified table output from MaxQuant run, e.g.
 
@@ -14,7 +14,7 @@ def read_maxquant(f):
     :param f: Source file
     :return: Pandas dataframe of imported data
     """
-    df = pd.read_csv(f, delimiter='\t', header=0, low_memory=False)
+    df = pd.read_csv(f, delimiter='\t', header=header, **kwargs)
     df.set_index('id', inplace=True)
 
     return df

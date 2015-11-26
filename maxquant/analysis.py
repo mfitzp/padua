@@ -1,4 +1,3 @@
-__author__ = 'Fitzp002'
 import pandas as pd
 import numpy as np
 import requests
@@ -35,11 +34,9 @@ def correlation(df, rowvar=False):
     # Create a correlation matrix for all correlations
     # of the columns (filled with na for all values)
     df = df.copy()
-    df[ np.isinf(df) ] = np.nan
-    df[ np.isnan(df) ] = 0
-
-    cdf = np.corrcoef(df.values, rowvar=False)
-    cdf = pd.DataFrame(cdf)
+    maskv = np.ma.masked_where(np.isnan(df.values), df.values)
+    cdf = np.ma.corrcoef(maskv, rowvar=False)
+    cdf = pd.DataFrame(np.array(cdf))
     cdf.columns = df.columns
     cdf.index = df.columns
 
@@ -75,7 +72,7 @@ def pca(df, n_components=2, mean_center=False, *args, **kwargs):
     return scores, weights
 
 
-    
+
 def enrichment(df):
 
     values = []

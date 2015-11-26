@@ -197,10 +197,11 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     ax = fig.add_subplot(1,1,1)
     levels = [0,1]    
 
+
     for c in set(scores.columns.get_level_values('Group')):
 
         try:
-            data = scores.loc[:,c].values.reshape(2,-1)
+            data = scores.loc[:,[c]].values.reshape(2,-1)
         except:
             continue
 
@@ -317,7 +318,7 @@ def enrichment(df):
     return axes
 
 
-def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels_from=None, labels_for=None, title=None,  markersize=64, equal_var=True, s0=0.00001, is_log2=False, fillna=None, label_sig_only=True):
+def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, fc='grey'):
 
     df = df.copy()
     
@@ -340,27 +341,34 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
         else:
             dr = np.log2(np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1))
 
+        ginv = ( (~np.isnan(g1)).sum(axis=1) < 3 ) | ((~np.isnan(g2)).sum(axis=1) < 3)
+
         g1 = np.ma.masked_where(np.isnan(g1), g1)
-        g2 = np.ma.masked_where(np.isnan(g1), g2)
+        g2 = np.ma.masked_where(np.isnan(g2), g2)
 
         # Calculate the p value between two groups (t-test)
-        t, p = sp.stats.mstats.ttest_ind(g1.T, g2.T, equal_var=equal_var) # False = Welch
+        t, p = sp.stats.mstats.ttest_ind(g1.T, g2.T)
 
     else:
         g1 = df[a].values
         dr = np.nanmean(g1, axis=1)
 
+        ginv = (~np.isnan(g1)).sum(axis=1) < 3
+
         # Calculate the p value one sample t
         g1 = np.ma.masked_where(np.isnan(g1), g1)
         t, p = sp.stats.mstats.ttest_1samp(g1.T, popmean=0)
 
-
     p = np.array(p) # Unmask
 
-    fig = plt.figure()
-    fig.set_size_inches(10,10)
+    # Set p values to nan where not > 3 values
+    p[ ginv ] = np.nan
 
-    ax = fig.add_subplot(1,1,1)
+    if ax is None:
+        fig = plt.figure()
+        fig.set_size_inches(10,10)
+
+        ax = fig.add_subplot(1,1,1)
 
     if estimate_qvalues:
         p[~np.isnan(p)] = qvalues(p[~np.isnan(p)])
@@ -370,10 +378,11 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
 
 
     # There are values below the fdr
-    
     s0x, s0y, s0fn = calculate_s0_curve(s0, fdr, min(fdr/2, np.nanmin(p)), np.log2(threshold), np.nanmax(np.abs(dr)), curve_interval=0.001)
-    ax.plot(s0x, -np.log10(s0y), 'r', lw=1 )
-    ax.plot(-s0x, -np.log10(s0y), 'r', lw=1 )
+
+    if draw_fdr is True:
+        ax.plot(s0x, -np.log10(s0y), 'r', lw=1 )
+        ax.plot(-s0x, -np.log10(s0y), 'r', lw=1 )
 
     # Select data based on s0 curve
     _FILTER_IN = []
@@ -381,7 +390,8 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
     for x, y in zip(dr, p):
         x = np.abs(x)
         spy = s0fn(x)
-        if x < np.min(s0x):
+
+        if len(s0x) == 0 or x < np.min(s0x):
             _FILTER_IN.append(False)
             continue
 
@@ -408,8 +418,8 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
         
         ax.scatter(dr[f], -np.log10(p[f]), c=c, s=s[f], linewidths=0, alpha=0.5)
     
-    _FILTER_OUT1 = _FILTER_OUT & (np.array(p) > fdr)
-    scatter(ax, _FILTER_OUT1, 'grey', alpha=0.3)
+    _FILTER_OUT1 = _FILTER_OUT & ~np.isnan(p) & (np.array(p) > fdr)
+    scatter(ax, _FILTER_OUT1, fc, alpha=0.3)
 
     _FILTER_OUT1 = _FILTER_OUT & (np.array(p) <= fdr)
     scatter(ax, _FILTER_OUT1, 'blue', alpha=0.3)
@@ -451,7 +461,7 @@ def _bartoplabel(ax, name, mx, offset):
         height = rect.get_height()
         rect.set_width( rect.get_width() - 0.05 )
         ax.text(rect.get_x()+rect.get_width()/2., height+150, '%.2f%%'% (name[ii]/mx),
-                ha='center', va='bottom')
+                ha='center', va='bottom', fontsize=15)
     
     
 def modifiedaminoacids(df, kind='pie'):
@@ -487,6 +497,9 @@ def modifiedaminoacids(df, kind='pie'):
         ax2.set_xlabel('')
         ax2.figure.set_size_inches(6,6)
 
+        for t in ax2.texts:
+            t.set_fontsize(15)
+
         return ax2
 
     return ax1, ax2
@@ -513,6 +526,10 @@ def modificationlocalization(df):
               loc='upper left', bbox_to_anchor=(1.0, 1.0))
     ax.set_ylabel('')
     ax.set_xlabel('')
+
+    for t in ax.texts:
+        t.set_fontsize(15)
+
     ax.figure.set_size_inches(6,6)
 
     return ax
@@ -547,7 +564,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
 
         if subplots:
             gs = gridspec.GridSpec(1, len(subplots), width_ratios=[dfi[sp].shape[1] for sp in subplots])
-            subplotsl = subpplots
+            subplotl = subplots
         elif isinstance(dfi.columns, pd.MultiIndex) and len(dfi.columns.levels) > 1:
             subplotl = dfi.columns.levels[0]
             gs = gridspec.GridSpec(1, len(subplotl), width_ratios=[dfi[sp].shape[1] for sp in subplotl])
@@ -572,7 +589,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
 
             medians = dfp.median(axis=1, level=0).reset_index().set_index('Replicate') #.dropna(axis=1)
 
-            if groups:
+            if groups and all([g in medians.columns.get_level_values(0)]):
                 medians = medians[ groups ]
 
             ax, dic = medians.plot(
@@ -896,7 +913,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     return ax
     
     
-def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=True, method='ward'):
+def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=True, method='ward', cmap=cm.PuOr_r):
 
     # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
     def clean_axis(ax):
@@ -1001,7 +1018,7 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     heatmapAX = fig.add_subplot(heatmapGS[1, 1])
 
     axi = heatmapAX.imshow(dfc.iloc[row_denD['leaves'], col_denD['leaves']], interpolation='nearest', aspect='auto', origin='lower'
-                           , norm=my_norm, cmap=cm.PuOr_r)
+                           , norm=my_norm, cmap=cmap)
     clean_axis(heatmapAX)
 
     # row labels
@@ -1041,7 +1058,7 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     return fig
 
 
-def correlation(df, cm=cm.RdBu_r, vmin=None, vmax=None):
+def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None):
     data = analysis.correlation(df).values
 
     # Plot the distributions

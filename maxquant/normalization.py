@@ -1,6 +1,5 @@
-__author__ = 'Fitzp002'
-
 import numpy as np
+
 
 def subtract_column_median(df, prefix='Intensity '):
     """
@@ -14,9 +13,9 @@ def subtract_column_median(df, prefix='Intensity '):
     :return:
     """
     df = df.copy()
-    
+
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    
+
     mask = [l.startswith(prefix) for l in df.columns.values]
     df.iloc[:, mask] = df.iloc[:, mask] - df.iloc[:, mask].median(axis=0)
 

@@ -27,7 +27,11 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     df = df.copy()
     if 'Label' not in design.index.names:
         design = design.set_index('Label')
-    
+
+
+    if remove is None:
+        remove = []
+
     labels = design.index.values
     names = design.columns.values
     idx_levels = len(names)
