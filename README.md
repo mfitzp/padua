@@ -1,16 +1,16 @@
-# PyMaxQuant
+# PaDuA
 
-A Python package for processing and analysing the output of proteomics software [MaxQuant](http://maxquant.org).
+A Python package for Proteomic Data Analysis, offering processing and analysis of the output of proteomics software [MaxQuant](http://maxquant.org).
 
 # Installation
 
-PyMaxQuant is available via the Python package index at [PyPi](http://pypi.org) and can be installed in the usual way with:
+PaDuA is available via the Python package index at [PyPi](http://pypi.org) and can be installed in the usual way with:
 
-    pip install pymaxquant
+    pip install padua
     
 Once installed the package is available for import using:
 
-    import maxquant
+    import padua
     
 The package is organised into multiple submodules for different purposes, eg.
 
@@ -34,14 +34,14 @@ processing workflow scripts to be created and re-used.
 
 An example Phosphoproteomic label-free-quantification workflow would be as follows:
 
-    import maxquant
-    df = maxquant.io.read_maxquant('Phospho (STY)Sites.txt')
+    import padua
+    df = padua.io.read_maxquant('Phospho (STY)Sites.txt')
 
-    df = maxquant.filter.filter_localization_probability(df)
+    df = padua.filter.filter_localization_probability(df)
 
-    df = maxquant.filter.remove_reverse(df)
-    df = maxquant.filter.remove_only_identified_by_site(df)
-    df = maxquant.filter.remove_potential_contaminants(df)
+    df = padua.filter.remove_reverse(df)
+    df = padua.filter.remove_only_identified_by_site(df)
+    df = padua.filter.remove_potential_contaminants(df)
 
     # Use standard Pandas dataframe manipulations to set an index
     df.set_index('Proteins', inplace=True)
@@ -52,7 +52,7 @@ An example Phosphoproteomic label-free-quantification workflow would be as follo
     # Remove the multiplicity column
     df = df.filter(regex='Intensity ')
 
-    df = maxquant.process.apply_experimental_design(df, 'experimentalDesignTable.txt')
+    df = padua.process.apply_experimental_design(df, 'experimentalDesignTable.txt')
 
     # The result of this step will be a multilevel index Class, Replicate
     # built by matching sample labels using regex
@@ -60,7 +60,7 @@ An example Phosphoproteomic label-free-quantification workflow would be as follo
         ('Class': '^(.*)_',
         ('Replicate': '_(\d)', 
     ]
-    df = maxquant.process.build_index_from_labels(df, indices)
+    df = padua.process.build_index_from_labels(df, indices)
 
 # Future
 
@@ -68,4 +68,4 @@ Provided functions are based on our current requirements, but will be expanded i
 
 # License
 
-PyMaxQuant is open source software and available under the BSD 2-clause (Simplified) license.
+PaDuA is open source software and available under the BSD 2-clause (Simplified) license.

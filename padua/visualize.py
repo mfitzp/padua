@@ -21,16 +21,16 @@ import warnings
 
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import colorConverter
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 import scipy.spatial.distance as distance
 import scipy.cluster.hierarchy as sch
 import matplotlib.cm as cm
- 
+import matplotlib.image as mplimg
+
+
 from matplotlib.patches import Ellipse
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import BytesIO, StringIO
 
 """
 Visualization tools for proteomic data, using standard Pandas dataframe structures
@@ -78,19 +78,23 @@ def hierarchical_match(d, k, default=None):
     '''
     Match a key against a dict, simplifying element at a time
     '''
-    if type(k) == str:
+    if d is None:
+        return default
+
+    if type(k) != list and type(k) != tuple:
         k = [k]
+
     for n, _ in enumerate(k):
         key = tuple(k[0:len(k)-n])
         if len(key) == 1:
             key = key[0]
+
         try:
             d[key]
         except:
             pass
         else:
             return d[key]
-
     return default
 
 
@@ -233,8 +237,8 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
         idxs = get_index_list( scores_f.columns.names, label_scores )
 
         for n, (x, y) in enumerate(scores_f.T.values):
-            r, ha =  (30, 'left')
-            ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+            r, ha = (30, 'left')
+            ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
 
         
     ax.set_xlabel(scores.index[pc1], fontsize=16)
@@ -318,7 +322,7 @@ def enrichment(df):
     return axes
 
 
-def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, fc='grey'):
+def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, fc='grey'):
 
     df = df.copy()
     
@@ -341,7 +345,7 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
         else:
             dr = np.log2(np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1))
 
-        ginv = ( (~np.isnan(g1)).sum(axis=1) < 3 ) | ((~np.isnan(g2)).sum(axis=1) < 3)
+        ginv = ( (~np.isnan(g1)).sum(axis=1) < minimum_sample_n ) | ((~np.isnan(g2)).sum(axis=1) < minimum_sample_n)
 
         g1 = np.ma.masked_where(np.isnan(g1), g1)
         g2 = np.ma.masked_where(np.isnan(g2), g2)
@@ -353,7 +357,7 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
         g1 = df[a].values
         dr = np.nanmean(g1, axis=1)
 
-        ginv = (~np.isnan(g1)).sum(axis=1) < 3
+        ginv = (~np.isnan(g1)).sum(axis=1) < minimum_sample_n
 
         # Calculate the p value one sample t
         g1 = np.ma.masked_where(np.isnan(g1), g1)
@@ -361,7 +365,7 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, estimate_qvalues=False, labels
 
     p = np.array(p) # Unmask
 
-    # Set p values to nan where not > 3 values
+    # Set p values to nan where not >= minimum_sample_n values
     p[ ginv ] = np.nan
 
     if ax is None:
@@ -675,7 +679,7 @@ def _process_ix(i, idx):
         return set( i.get_level_values(idx[0]) )
         
     
-def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_intersection=False):
+def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_intersection=False, fcols=None):
     try:
         import matplotlib_venn as mplv
     except:
@@ -688,14 +692,20 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
     s2 = _process_ix(df2.index, ix2)
     if df3 is not None:
         s3 = _process_ix(df3.index, ix3)
-        
-        
+
+    kwargs = {}
+
+    if fcols:
+        kwargs['set_colors'] = [fcols[l] for l in labels]
+
     if df3 is not None:
-        vn = mplv.venn3([s1,s2,s3], set_labels=labels)
+        vn = mplv.venn3([s1,s2,s3], set_labels=labels, **kwargs)
         intersection = s1 & s2 & s3
     else:
-        vn = mplv.venn2([s1,s2], set_labels=labels)
+        vn = mplv.venn2([s1,s2], set_labels=labels, **kwargs)
         intersection = s1 & s2
+
+
 
     ax = plt.gca()
 
@@ -913,7 +923,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     return ax
     
     
-def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=True, method='ward', cmap=cm.PuOr_r):
+def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False):
 
     # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
     def clean_axis(ax):
@@ -951,8 +961,13 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
     dfc = df.copy()
 
-    if z_score:
+    if z_score is None:
+        pass
+    elif z_score == 0:
         dfc = (dfc - dfc.median(axis=0)) / dfc.std(axis=0)
+    elif z_score == 1:
+        dfc = ((dfc.T - dfc.median(axis=1).T) / dfc.std(axis=1).T).T
+
 
     # Remove nan/infs
     dfc[np.isinf(dfc)] = 0
@@ -1043,6 +1058,8 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
     heatmapAX.grid('off')
 
+    edges = None
+
     if cluster_cols and n_col_clusters:
         edges = optimize_clusters(col_clusters, col_denD, n_col_clusters)
         for edge in edges:
@@ -1054,11 +1071,15 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
             heatmapAX.axhline(edge +0.5, color='k', lw=3)
 
 
+    if return_clusters:
 
-    return fig
+        return fig, dfc.iloc[row_denD['leaves'], col_denD['leaves']], edges
+
+    else:
+        return fig
 
 
-def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None):
+def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatter=False):
     data = analysis.correlation(df).values
 
     # Plot the distributions
@@ -1067,13 +1088,62 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None):
     ax = fig.add_subplot(1,1,1)
 
     if vmin is None:
-        vmin = np.min(data)
+        vmin = np.nanmin(data)
 
     if vmax is None:
-        vmax = np.max(data)
+        vmax = np.nanmax(data)
 
+    n_dims = data.shape[0]
+
+    # If showing scatter plots, set the inlay portion to np.nan
+    if show_scatter:
+
+        # Get the triangle, other values will be zeroed
+        idx = np.tril_indices(n_dims)
+        data[idx] = np.nan
+
+    cm.set_bad('w', 1.)
     i = ax.imshow(data, cmap=cm, vmin=vmin, vmax=vmax, interpolation='none')
     fig.colorbar(i)
+    fig.axes[0].grid('off')
+
+    if show_scatter:
+        figo = mpl.figure.Figure(figsize=(n_dims, n_dims))
+        # Create a dummy Agg canvas so we don't have to display/output this intermediate
+        canvas = FigureCanvasAgg(figo)
+
+        for x in range(n_dims):
+            for y in range(x, n_dims):
+
+                ax = figo.add_subplot(n_dims, n_dims, y*n_dims+x+1)
+
+                xd = df.values[:, x]
+                yd = df.values[:, y]
+
+                ax.scatter(xd, yd, lw=0, s=5, c='k', alpha=0.2)
+                ax.grid('off')
+                ax.axis('off')
+
+        figo.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+        raw = BytesIO()
+        figo.savefig(raw, format='png', bbox_inches=0, transparent=True)
+        del figo
+
+        raw.seek(0)
+        img = mplimg.imread(raw)
+        ax2 = fig.add_axes(fig.axes[0].get_position(), label='image', zorder=1)
+        ax2.axis('off')
+        ax2.imshow(img)
+
+    if labels:
+        # Build labels from the supplied axis
+        labels = df.columns.get_level_values(labels)
+
+        fig.axes[0].set_xticks(range(n_dims))
+        fig.axes[0].set_xticklabels(labels)
+
+        fig.axes[0].set_yticks(range(n_dims))
+        fig.axes[0].set_yticklabels(labels)
 
     return fig
 

@@ -3,12 +3,12 @@ from setuptools import setup, find_packages
 version = '0.1.0'
 
 setup(
-    name='pyMaxQuant',
+    name='padua',
     version=version,
-    url='http://github.com/mfitzp/pymaxquant',
+    url='http://github.com/mfitzp/padua',
     author='Martin Fitzpatrick',
     author_email='martin.fitzpatrick@gmail.com',
-    description='A Python interface for working with MaxQuant & Perseus outputs',
+    description='A Python interface for Proteomic Data Analysis, working with MaxQuant & Perseus outputs',
     license='MIT',
     packages=find_packages(),
     include_package_data=True,

@@ -37,9 +37,11 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     idx_levels = len(names)
     indexes = []
     
-    # Convert numeric only columns_to_combine
+    # Convert numeric only columns_to_combine; except index
     if auto_convert_numeric:
         design = design.convert_objects(convert_numeric=True)
+        # The match columns are always strings, so the index must also be
+        design.index = design.index.astype(str)
     
     # Apply type settings
     if types:
