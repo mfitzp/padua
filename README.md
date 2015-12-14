@@ -1,4 +1,4 @@
-# PaDuA
+![PaDuA](PaDuA.png)
 
 A Python package for Proteomic Data Analysis, offering processing and analysis of the output of proteomics software [MaxQuant](http://maxquant.org).
 
