@@ -17,15 +17,6 @@ Getting Started
    :maxdepth: 2
 
    install
-
-
-
-Developers
-==========
-
-.. toctree::
-   :maxdepth: 2
-   
    api
 
 

@@ -43,6 +43,35 @@ class Mock(MagicMock):
 
 # Add any modules that cannot be installed by RTD to this array
 MOCK_MODULES = [
+    'numpy',
+    'scipy',
+    'scipy.stats',
+    'scipy.interpolate',
+    'statsmodels',
+    'statsmodels.stats',
+    'gpml2svg',
+    'sklearn',
+    'sklearn.decomposition',
+    'matplotlib',
+    'matplotlib.backends',
+    'matplotlib.backends.backend_agg',
+    'matplotlib.figure',
+    'matplotlib.backend_bases',
+    'matplotlib.backends.backend_qt5agg',
+    'matplotlib._pylab_helpers',
+    'matplotlib.widgets',
+    'matplotlib.cbook',
+    'matplotlib.colors',
+    'matplotlib.cm',
+    'matplotlib.path',
+    'matplotlib.patches',
+    'matplotlib.transforms',
+    'matplotlib.axes',
+    'matplotlib.pyplot',
+    'dateutil',
+    'pandas',
+    'requests',
+    'pydot',
 ]
 
 for mod_name in MOCK_MODULES:
