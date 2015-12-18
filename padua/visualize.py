@@ -205,7 +205,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     for c in set(scores.columns.get_level_values('Group')):
 
         try:
-            data = scores.loc[:,[c]].values.reshape(2,-1)
+            data = scores[c].values.reshape(2,-1)
         except:
             continue
 
@@ -286,7 +286,7 @@ def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weight
     return ax
     
 
-def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=True, *args, **kwargs):
+def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=False, *args, **kwargs):
     
     scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
@@ -980,10 +980,6 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     vmax = dfc.max().max()
     vmax = max([vmax, abs(vmin)])  # choose larger of vmin and vmax
     vmin = vmax * -1
-    my_norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-
-    df[np.isnan(df)] = 0
-    df[np.isinf(df)] = 0
 
     # dendrogram single color
     sch.set_link_color_palette(['black'])
