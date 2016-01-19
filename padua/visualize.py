@@ -45,22 +45,73 @@ from . import process
 
 
 def get_protein_id(s):
-    return s.split(';')[0].split(' ')[0].split('_')[0] 
+    """
+    Return a shortened string, split on spaces, underlines and semicolons.
+
+    Extract the first, highest-ranked protein ID from a string containing
+    protein IDs in MaxQuant output format: e.g. P07830;P63267;Q54A44;P63268
+
+    Long names (containing species information) are eliminated (split on ' ') and
+    isoforms are removed (split on '_').
+
+    :param s:  protein IDs in MaxQuant format
+    :type s: str or unicode
+    :return: string
+    """
+    return s.split(';')[0].split(' ')[0].split('_')[0]
 
 
 def get_protein_ids(s):
+    """
+    Return a list of shortform protein IDs.
+
+    Extract all protein IDs from a string containing
+    protein IDs in MaxQuant output format: e.g. P07830;P63267;Q54A44;P63268
+
+    Long names (containing species information) are eliminated (split on ' ') and
+    isoforms are removed (split on '_').
+
+    :param s:  protein IDs in MaxQuant format
+    :type s: str or unicode
+    :return: list of string ids
+    """
     return [p.split(' ')[0].split('_')[0]  for p in s.split(';') ]
 
    
-def get_protein_id_list(df):
+def get_protein_id_list(df, level=0):
+    """
+    Return a complete list of shortform IDs from a DataFrame
+
+    Extract all protein IDs from a dataframe from multiple rows containing
+    protein IDs in MaxQuant output format: e.g. P07830;P63267;Q54A44;P63268
+
+    Long names (containing species information) are eliminated (split on ' ') and
+    isoforms are removed (split on '_').
+
+    :param df: DataFrame
+    :type df: pandas.DataFrame
+    :param level: Level of DataFrame index to extract IDs from
+    :type level: int or str
+    :return: list of string ids
+    """
     protein_list = []
-    for s in df.index.get_level_values(0):
+    for s in df.index.get_level_values(level):
         protein_list.extend( get_protein_ids(s) )
  
     return list(set(protein_list))    
 
 
 def get_shortstr(s):
+    """
+    Return the first part of a string before a semicolon.
+
+    Extract the first, highest-ranked protein ID from a string containing
+    protein IDs in MaxQuant output format: e.g. P07830;P63267;Q54A44;P63268
+
+    :param s:  protein IDs in MaxQuant format
+    :type s: str or unicode
+    :return: string
+    """
     return str(s).split(';')[0]
 
 
@@ -75,9 +126,16 @@ def build_combined_label(sl, idxs):
 
 
 def hierarchical_match(d, k, default=None):
-    '''
+    """
     Match a key against a dict, simplifying element at a time
-    '''
+
+
+    :param df: DataFrame
+    :type df: pandas.DataFrame
+    :param level: Level of DataFrame index to extract IDs from
+    :type level: int or str
+    :return: hiearchically matched value or default
+    """
     if d is None:
         return default
 
@@ -745,7 +803,7 @@ def find_nearest_idx(array,value):
     return idx
 
 
-def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=True, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None):
+def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=False, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None):
 
 
     fig = plt.figure(figsize=(8,8))
@@ -980,6 +1038,8 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     vmax = dfc.max().max()
     vmax = max([vmax, abs(vmin)])  # choose larger of vmin and vmax
     vmin = vmax * -1
+
+    my_norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
 
     # dendrogram single color
     sch.set_link_color_palette(['black'])
