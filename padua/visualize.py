@@ -410,6 +410,11 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
 
     
 def enrichment(df):
+    """
+
+    :param df:
+    :return:
+    """
 
     result = analysis.enrichment(df)
 
@@ -430,7 +435,30 @@ def enrichment(df):
 
 
 def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, fc='grey'):
+    """
 
+
+
+    :param df:
+    :param a:
+    :param b:
+    :param fdr:
+    :param threshold:
+    :param minimum_sample_n:
+    :param estimate_qvalues:
+    :param labels_from:
+    :param labels_for:
+    :param title:
+    :param markersize:
+    :param s0:
+    :param draw_fdr:
+    :param is_log2:
+    :param fillna:
+    :param label_sig_only:
+    :param ax:
+    :param fc:
+    :return:
+    """
     df = df.copy()
     
     if np.any(df.values < 0) and not is_log2:
@@ -566,7 +594,7 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
     
 
 def _bartoplabel(ax, name, mx, offset):
-# attach some text labels
+    # attach some text labels
     for ii,container in enumerate(ax.containers):
         rect = container.patches[0]
         height = rect.get_height()
@@ -576,6 +604,14 @@ def _bartoplabel(ax, name, mx, offset):
     
     
 def modifiedaminoacids(df, kind='pie'):
+    """
+
+
+
+    :param df:
+    :param kind:
+    :return:
+    """
     colors =   ['#6baed6','#c6dbef','#bdbdbd']
     total_aas, quants = analysis.modifiedaminoacids(df)
     
@@ -617,6 +653,13 @@ def modifiedaminoacids(df, kind='pie'):
     
     
 def modificationlocalization(df):
+    """
+
+
+
+    :param df:
+    :return:
+    """
     colors =  ["#78c679", "#d9f0a3", "#ffffe5"]
 
     lp = df['Localization prob'].values
@@ -647,7 +690,22 @@ def modificationlocalization(df):
     
     
 def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None, fcol=None, ecol=None, hatch=None, ylabel="", xlabel=""):
-    
+    """
+
+
+    :param df:
+    :param s:
+    :param title_from:
+    :param subplots:
+    :param figsize:
+    :param groups:
+    :param fcol:
+    :param ecol:
+    :param hatch:
+    :param ylabel:
+    :param xlabel:
+    :return:
+    """
     df = df.copy()
 
         
@@ -752,6 +810,12 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
 
     
 def column_correlations(df, cmap=cm.Reds):
+    """
+
+    :param df:
+    :param cmap:
+    :return:
+    """
     df = df.copy()
     df = df.astype(float)
     
@@ -787,6 +851,19 @@ def _process_ix(i, idx):
         
     
 def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_intersection=False, fcols=None):
+    """
+
+    :param df1:
+    :param df2:
+    :param df3:
+    :param labels:
+    :param ix1:
+    :param ix2:
+    :param ix3:
+    :param return_intersection:
+    :param fcols:
+    :return:
+    """
     try:
         import matplotlib_venn as mplv
     except:
@@ -823,6 +900,14 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
 
         
 def sitespeptidesproteins(df, labels=None, colors=None, site_localization_probability=0.75):
+    """
+
+    :param df:
+    :param labels:
+    :param colors:
+    :param site_localization_probability:
+    :return:
+    """
     fig = plt.figure(figsize=(4,6))
     ax = fig.add_subplot(1,1,1)
 
@@ -846,6 +931,12 @@ def sitespeptidesproteins(df, labels=None, colors=None, site_localization_probab
     
     
 def find_nearest_idx(array,value):
+    """
+
+    :param array:
+    :param value:
+    :return:
+    """
     array = array.copy()
     array[np.isnan(array)] = 1
     idx = (np.abs(array-value)).argmin()
@@ -853,7 +944,19 @@ def find_nearest_idx(array,value):
 
 
 def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=False, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None):
+    """
 
+    :param df:
+    :param colors:
+    :param labels_from:
+    :param number_of_annotations:
+    :param show_go_enrichment:
+    :param go_ids_from:
+    :param go_enrichment:
+    :param go_max_labels:
+    :param go_fdr:
+    :return:
+    """
 
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1)
@@ -1031,7 +1134,20 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     
     
 def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False):
+    """
 
+    :param df:
+    :param cluster_cols:
+    :param cluster_rows:
+    :param n_col_clusters:
+    :param n_row_clusters:
+    :param fcol:
+    :param z_score:
+    :param method:
+    :param cmap:
+    :param return_clusters:
+    :return:
+    """
     # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
     def clean_axis(ax):
         """Remove ticks, tick labels, and frame from axis"""
@@ -1185,6 +1301,16 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
 
 def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatter=False):
+    """
+    
+    :param df:
+    :param cm:
+    :param vmin:
+    :param vmax:
+    :param labels:
+    :param show_scatter:
+    :return:
+    """
     data = analysis.correlation(df).values
 
     # Plot the distributions
