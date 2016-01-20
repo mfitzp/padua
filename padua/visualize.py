@@ -121,8 +121,20 @@ def get_index_list(l, ms):
     return [l.index(s) for s in ms if s in l]
 
 
-def build_combined_label(sl, idxs):
-    return ' '.join([get_shortstr(str(sl[n])) for n in idxs])
+def build_combined_label(sl, idxs, sep=' '):
+    """
+    Generate a combined label from a list of indexes
+    into sl, by joining them with `sep` (str).
+
+    :param sl: Strings to combine
+    :type sl: dict of str
+    :param idxs: Indexes into sl
+    :type idxs: list of sl keys
+    :param sep:
+
+    :return: `str` of combined label
+    """
+    return sep.join([get_shortstr(str(sl[n])) for n in idxs])
 
 
 def hierarchical_match(d, k, default=None):
@@ -157,6 +169,17 @@ def hierarchical_match(d, k, default=None):
 
 
 def chunks(seq, num):
+    """
+    Separate `seq` (`np.array`) into `num` series of as-near-as possible equal
+    length values.
+
+    :param seq: Sequence to split
+    :type seq: np.array
+    :param num: Number of parts to split sequence into
+    :type num: int
+    :return: np.array of split parts
+    """
+
     avg = len(seq) / float(num)
     out = []
     last = 0.0
@@ -345,7 +368,33 @@ def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weight
     
 
 def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=False, *args, **kwargs):
-    
+    """
+    Perform Principal Component Analysis (PCA) from input DataFrame and generate scores and weights plots.
+
+
+
+
+    Note: the PCA is calculated using `analysis.pca` and will give identical results.
+
+
+    :param df:
+    :param n_components:
+    :param mean_center:
+    :param fcol:
+    :param ecol:
+    :param marker:
+    :param markersize:
+    :param threshold:
+    :param label_threshold:
+    :param label_weights:
+    :param label_scores:
+    :param return_df:
+    :param show_covariance_ellipse:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+
     scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
     scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
