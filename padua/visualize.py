@@ -192,9 +192,22 @@ def chunks(seq, num):
  
     
 def calculate_s0_curve(s0, minpval, maxpval, minratio, maxratio, curve_interval=0.1):
+    """
+    Calculate s0 curve for volcano plot.
 
-    #maxpval, minpval  = np.nanmin(p), np.nanmax(p)
-    #minratio, maxratio = np.nanmin(ratio), np.nanmax(ratio)
+    Taking an min and max p value, and a min and max ratio, calculate an smooth
+    curve starting from parameter `s0` in each direction.
+
+    The `curve_interval` parameter defines the smoothness of the resulting curve.
+
+    :param s0: `float` offset of curve from interset
+    :param minpval: `float` minimum p value
+    :param maxpval: `float` maximum p value
+    :param minratio: `float` minimum ratio
+    :param maxratio: `float` maximum ratio
+    :param curve_interval: `float` stepsize (smoothness) of curve generator
+    :return: x, y, fn  x,y points of curve, and fn generator
+    """
 
     mminpval = -np.log10(minpval)
     mmaxpval = -np.log10(maxpval)
@@ -214,7 +227,6 @@ def calculate_s0_curve(s0, minpval, maxpval, minratio, maxratio, curve_interval=
     y = fn(x)
     
     return x, y, fn    
-
 
 
 # Add ellipses for confidence intervals, with thanks to Joe Kington
@@ -705,20 +717,28 @@ def modificationlocalization(df):
     
 def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None, fcol=None, ecol=None, hatch=None, ylabel="", xlabel=""):
     """
+    Generate a box plot from pandas DataFrame with sample grouping.
+
+    Plot group mean, median and deviations for specific values (proteins) in the dataset. Plotting is controlled via
+    the `s` param, which is used as a search string along the y-axis. All matching values will be returned and plotted.
+    Multiple search values can be provided as a `list` of `str` and these will be searched as an `and` query.
 
 
-    :param df:
-    :param s:
-    :param title_from:
-    :param subplots:
-    :param figsize:
+
+
+
+    :param df: Pandas `DataFrame`
+    :param s: `str` search y-axis for matching values (case-insensitive)
+    :param title_from: `list` of `str` of index levels to generate title from
+    :param subplots: `bool` use subplots to separate plot groups
+    :param figsize: `tuple` of `int` size of resulting figure
     :param groups:
-    :param fcol:
-    :param ecol:
-    :param hatch:
-    :param ylabel:
-    :param xlabel:
-    :return:
+    :param fcol: `dict` of `str` indexer:color where color is hex value or matplotlib color code
+    :param ecol: `dict` of `str` indexer:color where color is hex value or matplotlib color code
+    :param hatch: `dict` of `str` indexer:hatch where hatch is matplotlib hatch descriptor
+    :param ylabel: `str` ylabel for boxplot
+    :param xlabel: `str` xlabel for boxplot
+    :return: `list` of `Figure`
     """
     df = df.copy()
 
@@ -735,7 +755,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
     
     if s:
         # Filter the table on the match string (s)
-        df = df.iloc[ [all([str(si) in l for si in s]) for l in df.index.values] ]
+        df = df.iloc[ [all([str(si).lower() in l.lower() for si in s]) for l in df.index.values] ]
     
     figures = []
     # Iterate each matching row, building the correct structure dataframe
