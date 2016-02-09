@@ -436,27 +436,37 @@ def enrichment(df):
 
 def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, fc='grey'):
     """
+    Volcano plot of two sample groups showing t-test p value vs. log2(fc).
+
+    Generates a volcano plot for two sample groups, selected from `df` using `a` and `b` indexers. The mean of
+    each group is calculated along the y-axis (per protein) and used to generate a log2 ratio. If a log2-transformed
+    dataset is supplied set `islog2=True` (a warning will be given when negative values are present).
+
+    A two-sample independent t-test is performed between each group. If `minimum_sample_n` is supplied, any values (proteins)
+    without this number of samples will be dropped from the analysis.
+
+    Individual data points can be labelled in the resulting plot by passing `labels_from` with a index name, and `labels_for`
+    with a list of matching values for which to plot labels.
 
 
-
-    :param df:
-    :param a:
-    :param b:
-    :param fdr:
-    :param threshold:
-    :param minimum_sample_n:
-    :param estimate_qvalues:
-    :param labels_from:
-    :param labels_for:
-    :param title:
-    :param markersize:
-    :param s0:
-    :param draw_fdr:
-    :param is_log2:
-    :param fillna:
-    :param label_sig_only:
-    :param ax:
-    :param fc:
+    :param df: Pandas `dataframe`
+    :param a: `tuple` or `str` indexer for group A
+    :param b: `tuple` or `str` indexer for group B
+    :param fdr: `float` false discovery rate cut-off
+    :param threshold: `float` log2(fc) ratio cut -off
+    :param minimum_sample_n: `int` minimum sample for t-test
+    :param estimate_qvalues: `bool` estimate Q values (adjusted P)
+    :param labels_from: `str` or `int` index level to get labels from
+    :param labels_for: `list` of `str` matching labels to show
+    :param title: `str` title for plot
+    :param markersize: `int` size of markers
+    :param s0: `float` smoothing factor between fdr/fc cutoff
+    :param draw_fdr: `bool` draw the fdr/fc curve
+    :param is_log2: `bool` is the data log2 transformed already?
+    :param fillna: `float` fill NaN values with value (default: 0)
+    :param label_sig_only: `bool` only label significant values
+    :param ax: matplotlib `axis` on which to draw
+    :param fc: `str` hex or matplotlib color code, default color of points
     :return:
     """
     df = df.copy()
@@ -1171,6 +1181,8 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     :param return_clusters: `bool` return clusters in addition to axis
     :return: matplotlib axis, or axis and cluster data
     """
+
+
     # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
     def clean_axis(ax):
         """Remove ticks, tick labels, and frame from axis"""
