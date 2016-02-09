@@ -371,27 +371,31 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
     """
     Perform Principal Component Analysis (PCA) from input DataFrame and generate scores and weights plots.
 
+    Principal Component Analysis is a technique for identifying the largest source of variation in a dataset. This
+    function uses the implementation available in scikit-learn. The PCA is calculated via `analysis.pca` and will
+    therefore give identical results.
 
+    Resulting scores and weights plots are generated showing the distribution of samples within the resulting
+    PCA space. Sample color and marker size can be controlled by label, lookup and calculation (lambda) to
+    generate complex plots highlighting sample separation.
 
+    For further information see the examples included in the documentation.
 
-    Note: the PCA is calculated using `analysis.pca` and will give identical results.
-
-
-    :param df:
-    :param n_components:
-    :param mean_center:
-    :param fcol:
-    :param ecol:
-    :param marker:
-    :param markersize:
-    :param threshold:
-    :param label_threshold:
-    :param label_weights:
-    :param label_scores:
-    :param return_df:
-    :param show_covariance_ellipse:
-    :param args:
-    :param kwargs:
+    :param df: Pandas `DataFrame`
+    :param n_components: `int` number of Principal components to return
+    :param mean_center: `bool` mean center the data before performing PCA
+    :param fcol: `dict` of indexers:colors, where colors are hex colors or matplotlib color names
+    :param ecol: `dict` of indexers:colors, where colors are hex colors or matplotlib color names
+    :param marker: `str` matplotlib marker name (default "o")
+    :param markersize: `int` or `callable` which returns an `int` for a given indexer
+    :param threshold: `float` weight threshold for plot (horizontal line)
+    :param label_threshold: `float` weight threshold over which to draw labels
+    :param label_weights: `list` of `str`
+    :param label_scores: `list` of `str`
+    :param return_df: `bool` return the resulting scores, weights as pandas DataFrames
+    :param show_covariance_ellipse: `bool` show the covariance ellipse around each group
+    :param args: additional arguments passed to analysis.pca
+    :param kwargs: additional arguments passed to analysis.pca
     :return:
     """
 
