@@ -631,13 +631,17 @@ def _bartoplabel(ax, name, mx, offset):
     
 def modifiedaminoacids(df, kind='pie'):
     """
+    Generate a plot of relative numbers of modified amino acids in source DataFrame.
 
+    Plot a pie or bar chart showing the number and percentage of modified amino
+    acids in the supplied data frame. The amino acids displayed will be
+    determined from the supplied data/modification type.
 
-
-    :param df:
-    :param kind:
-    :return:
+    :param df: processed DataFrame
+    :param kind: `str` type of plot; either "pie" or "bar"
+    :return: matplotlib ax
     """
+
     colors =   ['#6baed6','#c6dbef','#bdbdbd']
     total_aas, quants = analysis.modifiedaminoacids(df)
     
@@ -680,12 +684,22 @@ def modifiedaminoacids(df, kind='pie'):
     
 def modificationlocalization(df):
     """
+    Plot the % of Class I, II and III localised peptides according to standard thresholds.
 
+    Generates a pie chart showing the % of peptides that fall within the Class I, II and III
+    classifications based on localisation probability. These definitions are:
 
+        Class I     0.75 > x
+        Class II    0.50 > x <= 0.75
+        Class III   0.25 > x <= 0.50
+
+    Any peptides with a localisation score of <= 0.25 are excluded.
 
     :param df:
-    :return:
+    :return: matplotlib axis
     """
+
+
     colors =  ["#78c679", "#d9f0a3", "#ffffe5"]
 
     lp = df['Localization prob'].values
@@ -723,8 +737,8 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
     the `s` param, which is used as a search string along the y-axis. All matching values will be returned and plotted.
     Multiple search values can be provided as a `list` of `str` and these will be searched as an `and` query.
 
-
-
+    Box fill and edge colors can be controlled on a full-index basis by passing a `dict` of indexer:color to
+    `fcol` and `ecol` respectively. Box hatching can be controlled by passing a `dict` of indexer:hatch to `hatch`.
 
 
     :param df: Pandas `DataFrame`
@@ -740,9 +754,9 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
     :param xlabel: `str` xlabel for boxplot
     :return: `list` of `Figure`
     """
+
     df = df.copy()
 
-        
     if type(s) == str:
         s = [s]
 
