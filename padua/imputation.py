@@ -79,6 +79,8 @@ def pls(df):
     ix_mask = np.arange(0, df.shape[1])
     total_n = len(missing_values)
 
+    df = df.fillna(0)
+
     plsr = PLSRegression(n_components=2)
     
     for n, p in enumerate(missing_values):

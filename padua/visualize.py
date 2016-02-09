@@ -309,7 +309,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
 
         if show_covariance_ellipse and data.shape[1] > 2:
             cov = data[[pc1, pc2], :].T
-            ellip = plot_point_cov(cov, nstd=2, linestyle='dashed', linewidth=0.5, edgecolor=fc,
+            ellip = plot_point_cov(cov, nstd=2, linestyle='dashed', linewidth=0.5, edgecolor=ec or fc,
                                    alpha=0.8)  #**kwargs for ellipse styling
             ax.add_artist(ellip)
 
@@ -852,6 +852,7 @@ def _process_ix(i, idx):
     
 def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_intersection=False, fcols=None):
     """
+    Plot a 2 or 3-part venn diagram showing the overlap between 2 or 3 pandas DataFrames.
 
     :param df1:
     :param df2:
@@ -901,11 +902,18 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
         
 def sitespeptidesproteins(df, labels=None, colors=None, site_localization_probability=0.75):
     """
+    Plot the number of sites, peptides and proteins in the dataset.
 
-    :param df:
-    :param labels:
-    :param colors:
-    :param site_localization_probability:
+    Generates a plot with sites, peptides and proteins displayed hierarchically in chevrons.
+    The site count is limited to Class I (<=0.75 site localization probability) by default
+    but may be altered using the `site_localization_probability` parameter.
+
+    Labels and alternate colours may be supplied as a 3-entry iterable.
+
+    :param df: pandas DataFrame to calculate numbers from
+    :param labels: list/tuple of 3 strings containing labels
+    :param colors: list/tuple of 3 colours as hex codes or matplotlib color codes
+    :param site_localization_probability: the cut-off for site inclusion (default=0.75; Class I)
     :return:
     """
     fig = plt.figure(figsize=(4,6))
@@ -1135,18 +1143,33 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     
 def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False):
     """
+    Hierarchical clustering of samples or proteins
 
-    :param df:
-    :param cluster_cols:
-    :param cluster_rows:
-    :param n_col_clusters:
-    :param n_row_clusters:
-    :param fcol:
-    :param z_score:
-    :param method:
-    :param cmap:
-    :param return_clusters:
-    :return:
+    Peform a hiearchical clustering on a pandas DataFrame and display the resulting clustering as a
+    heatmap.
+    The axis of clustering can be controlled with `cluster_cols` and `cluster_rows`. By default clustering is performed
+    along the X-axis, therefore to cluster samples transpose the DataFrame as it is passed, using `df.T`.
+
+    Samples are z-scored along the 0-axis (y) by default. To override this use the `z_score param with the axis to `z_score`
+    or alternatively, `None`, to turn it off.
+
+    If a `n_col_clusters` or `n_row_clusters` is specified, this defines the number of clusters to identify and highlight
+    in the resulting heatmap. At *least* this number of clusters will be selected, in some instances there will be more
+    if 2 clusters rank equally at the determined cutoff.
+
+    If specified `fcol` will be used to colour the axes for matching samples.
+
+    :param df: Pandas `DataFrame to` cluster
+    :param cluster_cols: `bool` if `True` cluster along column axis
+    :param cluster_rows: `bool` if `True` cluster along row axis
+    :param n_col_clusters: `int` the ideal number of highlighted clusters in cols
+    :param n_row_clusters: `int` the ideal number of highlighted clusters in rows
+    :param fcol: `dict` of label:colors to be applied along the axes
+    :param z_score: `int` to specify the axis to Z score or `None` to disable
+    :param method: `str` describing cluster method, default ward
+    :param cmap: matplotlib colourmap for heatmap
+    :param return_clusters: `bool` return clusters in addition to axis
+    :return: matplotlib axis, or axis and cluster data
     """
     # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
     def clean_axis(ax):
@@ -1302,7 +1325,7 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
 def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatter=False):
     """
-    
+
     :param df:
     :param cm:
     :param vmin:
@@ -1371,7 +1394,7 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
         labels = df.columns.get_level_values(labels)
 
         fig.axes[0].set_xticks(range(n_dims))
-        fig.axes[0].set_xticklabels(labels)
+        fig.axes[0].set_xticklabels(labels, rotation=90)
 
         fig.axes[0].set_yticks(range(n_dims))
         fig.axes[0].set_yticklabels(labels)
@@ -1382,7 +1405,7 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
 def comparedist(df1, df2, bins=50):
     """
     Compare two distributions with visualisations of:
-     - individual and combined distributions\
+     - individual and combined distributions
      - distribution of non-common values
      - distribution of non-common values vs. each side
 
@@ -1434,3 +1457,4 @@ def comparedist(df1, df2, bins=50):
     ax3.set_ylabel('Count')
 
     return fig
+
