@@ -902,16 +902,20 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
     """
     Plot a 2 or 3-part venn diagram showing the overlap between 2 or 3 pandas DataFrames.
 
-    :param df1:
-    :param df2:
-    :param df3:
-    :param labels:
-    :param ix1:
-    :param ix2:
-    :param ix3:
-    :param return_intersection:
-    :param fcols:
-    :return:
+    Provided with two or three Pandas DataFrames, this will return a venn diagram showing the overlap calculated between
+    the DataFrame indexes provided as ix1, ix2, ix3. Labels for each DataFrame can be provided as a list in the same order,
+    while `fcol` can be used to specify the colors of each section.
+
+    :param df1: Pandas DataFrame
+    :param df2: Pandas DataFrame
+    :param df3: Pandas DataFrame (optional)
+    :param labels: List of labels for the provided dataframes
+    :param ix1: Index level name of of Dataframe 1 to use for comparison
+    :param ix2: Index level name of of Dataframe 2 to use for comparison
+    :param ix3: Index level name of of Dataframe 3 to use for comparison
+    :param return_intersection: Return the intersection of the supplied indices
+    :param fcols: List of colors for the provided dataframes
+    :return: ax, or ax with intersection
     """
     try:
         import matplotlib_venn as mplv
@@ -1001,17 +1005,23 @@ def find_nearest_idx(array,value):
 
 def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=False, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None):
     """
+    Rank intensity plot, showing intensity order vs. raw intensity value S curve.
 
-    :param df:
-    :param colors:
-    :param labels_from:
-    :param number_of_annotations:
-    :param show_go_enrichment:
-    :param go_ids_from:
-    :param go_enrichment:
-    :param go_max_labels:
-    :param go_fdr:
-    :return:
+    Generates a plot showing detected protein intensity plotted against protein intensity rank. A series of colors
+    can be provided to segment the S curve into regions. Gene ontology enrichments (as calculated via `analysis.go_enrichment`)
+    can be overlaid on the output. Note that since the ranking reflects simple abundance there is little meaning to enrichment
+    (FDR will remove most if not all items) and it is best considered an annotation of the 'types' of proteins in that region.
+
+    :param df: Pands DataFrame
+    :param colors: `list` of colors to segment the plot into
+    :param labels_from: Take labels from this column
+    :param number_of_annotations: Number of protein annotations at each tip
+    :param show_go_enrichment: Overlay plot with GO enrichment terms
+    :param go_ids_from: Get IDs for GO enrichment from this column
+    :param go_enrichment: Type of GO enrichment to show
+    :param go_max_labels: Maximum number of GO enrichment labels per segment
+    :param go_fdr: FDR cutoff to apply to the GO enrichment terms
+    :return: matplotlib Axes
     """
 
     fig = plt.figure(figsize=(8,8))
@@ -1375,15 +1385,22 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
 def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatter=False):
     """
+    Generate a column-wise correlation plot from the provided data.
 
-    :param df:
-    :param cm:
-    :param vmin:
-    :param vmax:
-    :param labels:
-    :param show_scatter:
-    :return:
+    The columns of the supplied dataframes will be correlated (using `analysis.correlation`) to
+    generate a Pearson correlation plot heatmap. Scatter plots of correlated samples can also be generated over
+    the redundant half of the plot to give a visual indication of the protein distribution.
+
+    :param df: `pandas.DataFrame`
+    :param cm: Matplotlib colormap (default cm.PuOr_r)
+    :param vmin: Minimum value for colormap normalization
+    :param vmax: Maximum value for colormap normalization
+    :param labels: Index column to retrieve labels from
+    :param show_scatter: Show overlaid scatter plots for each sample in lower-left half. Note that this is slow for large numbers of samples.
+    :return: `matplotlib.Figure` generated Figure.
     """
+
+
     data = analysis.correlation(df).values
 
     # Plot the distributions
@@ -1454,12 +1471,17 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
 
 def comparedist(df1, df2, bins=50):
     """
-    Compare two distributions with visualisations of:
+    Compare the distributions of two DataFrames giving visualisations of:
      - individual and combined distributions
      - distribution of non-common values
      - distribution of non-common values vs. each side
 
-    Plot distribution as area (fill_between) + mean, median vertical bars
+    Plot distribution as area (fill_between) + mean, median vertical bars.
+
+    :param df1: `pandas.DataFrame`
+    :param df2: `pandas.DataFrame`
+    :param bins: `int` number of bins for histogram
+    :return: Figure
     """
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(30, 10))
