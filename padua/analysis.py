@@ -17,8 +17,7 @@ except ImportError:
     from io import StringIO
 
 
-def get_protein_id(s):
-    return str(s).split(';')[0].split(' ')[0].split('_')[0]
+from .utils import get_protein_id
 
 
 def correlation(df, rowvar=False):
