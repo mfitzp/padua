@@ -26,8 +26,8 @@ def correlation(df, rowvar=False):
 
 
 
-    :param df:
-    :return:
+    :param df: Pandas DataFrame
+    :return: Pandas DataFrame (n_columns x n_columns) of columnwise correlations
     """
 
     # Create a correlation matrix for all correlations
