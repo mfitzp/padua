@@ -63,7 +63,9 @@ def pls(df):
     """
     A simple implementation of a least-squares approach to imputation using partial least squares
     regression (PLS).
-    
+
+    :param df:
+    :return:
     """
     df = df.copy()
     df[np.isinf(df)] = np.nan

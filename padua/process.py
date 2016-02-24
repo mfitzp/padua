@@ -7,6 +7,11 @@ import re
 import itertools
 
 def numeric(s):
+    """
+
+    :param s:
+    :return:
+    """
     try:
         return int(s)
     except ValueError:
@@ -19,11 +24,19 @@ def numeric(s):
 def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True):
     """
     Build a MultiIndex from a design table.
-    
+
     Supply with a table with column headings for the new multiindex
     and a index containing the labels to search for in the data.
-    
+
+    :param df:
+    :param design:
+    :param remove:
+    :param types:
+    :param axis:
+    :param auto_convert_numeric:
+    :return:
     """
+
     df = df.copy()
     if 'Label' not in design.index.names:
         design = design.set_index('Label')
@@ -137,10 +150,23 @@ def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
 
 
 def get_unique_indices(df, axis=1):
+    """
+
+    :param df:
+    :param axis:
+    :return:
+    """
     return dict(zip(df.columns.names, dif.columns.levels))
 
 
 def strip_index_labels(df, strip, axis=1):
+    """
+
+    :param df:
+    :param strip:
+    :param axis:
+    :return:
+    """
 
     df = df.copy()
 
@@ -284,8 +310,7 @@ def transform_expression_columns(df, fn=np.log2, prefix='Intensity '):
     
     
     return df
-    
-    
+
     
 def fold_columns_to_rows(df, levels_from=2):
     """

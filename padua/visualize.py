@@ -108,6 +108,24 @@ def plot_cov_ellipse(cov, pos, nstd=2, **kwargs):
 
 
 def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersize=30, label_scores=None, show_covariance_ellipse=True, **kwargs):
+    """
+    Plot a scores plot for two principal components as AxB scatter plot.
+
+    Returns the plotted axis.
+
+    :param scores: DataFrame containing scores
+    :param pc1: Column indexer into scores for PC1
+    :param pc2: Column indexer into scores for PC2
+    :param fcol: Face (fill) color definition
+    :param ecol: Edge color definition
+    :param marker: Marker style (matplotlib; default 'o')
+    :param markersize: int Size of the marker
+    :param label_scores: Index level to label markers with
+    :param show_covariance_ellipse: Plot covariance (2*std) ellipse around each grouping
+    :param kwargs:
+    :return: Generated axes
+    """
+
 
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1,1,1)
@@ -160,7 +178,16 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
 
 
 def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weights=None, **kwargs):
-    
+    """
+
+    :param weights:
+    :param pc:
+    :param threshold:
+    :param label_threshold:
+    :param label_weights:
+    :param kwargs:
+    :return:
+    """
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1,1,1)
     ax.plot(weights.iloc[:, pc])
@@ -439,6 +466,14 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
     
 
 def _bartoplabel(ax, name, mx, offset):
+    """
+
+    :param ax:
+    :param name:
+    :param mx:
+    :param offset:
+    :return:
+    """
     # attach some text labels
     for ii,container in enumerate(ax.containers):
         rect = container.patches[0]
@@ -708,6 +743,13 @@ def column_correlations(df, cmap=cm.Reds):
     
     
 def _process_ix(i, idx):
+    """
+
+
+    :param i:
+    :param idx:
+    :return:
+    """
     if idx is None:
         return set(i)
         
@@ -894,6 +936,9 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     text_x_slots[text_y_slots > text_y_cross] -= 0.15
 
     def annotate_obj(ax, n, labels, xs, ys, idx, yd, ha):
+        """
+        """
+
         ni = 1
         previous = {}
         for l, xi, yi in zip(labels, xs, ys):

@@ -4,12 +4,28 @@ import pandas as pd
 import numpy as np
 
 def remove_columns_matching(df, column, match):
+    """
+
+
+    :param df:
+    :param column:
+    :param match:
+    :return:
+    """
     df = df.copy()
     mask = df[column].values != match
     return df.iloc[mask, :]
 
 
 def remove_columns_containing(df, column, match):
+    """
+
+
+    :param df:
+    :param column:
+    :param match:
+    :return:
+    """
     df = df.copy()
     mask = [match not in str(v) for v in df[column].values]
     return df.iloc[mask, :]
@@ -61,7 +77,12 @@ def filter_localization_probability(df, threshold=0.75):
 def minimum_valid_values_in_any_group(df, levels=None, n=1, invalid=np.nan):
     """
     Filter dataframe by at least n valid values in at least one group.
-    
+
+    :param df:
+    :param levels:
+    :param n:
+    :param invalid:
+    :return:
     """
     df = df.copy()
     
@@ -84,14 +105,14 @@ def minimum_valid_values_in_any_group(df, levels=None, n=1, invalid=np.nan):
     return df.iloc[mask, :]
 
 
-
-
-
-
-
 def search(df, match, columns=['Proteins','Protein names','Gene names']):
     """
     Search for a given string in a set of columns in a processed dataframe
+
+    :param df:
+    :param match:
+    :param columns:
+    :return:
     """
     df = df.copy()
     dft = df.reset_index()

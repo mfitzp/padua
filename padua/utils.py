@@ -4,6 +4,7 @@ import sys, pickle, pdb
 import scipy.stats as st
 import scipy.interpolate
 
+
 def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
     """
     Copyright (c) 2012, Nicolo Fusi, University of Sheffield
@@ -17,13 +18,18 @@ def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
     m: number of tests. If not specified m = pv.size
     verbose: print verbose messages? (default False)
     lowmem: use memory-efficient in-place algorithm
-    pi0: if None, it's estimated as suggested in Storey and Tibshirani, 2003. 
+    pi0: if None, it's estimated as suggested in Storey and Tibshirani, 2003.
          For most GWAS this is not necessary, since pi0 is extremely likely to be
          1
 
+    :param pv:
+    :param m:
+    :param verbose:
+    :param lowmem:
+    :param pi0:
+    :return:
     """
-    
-    
+
     assert(pv.min() >= 0 and pv.max() <= 1), "p-values should be between 0 and 1"
 
     original_shape = pv.shape
@@ -115,6 +121,7 @@ def get_protein_id(s):
     """
     return str(s).split(';')[0].split(' ')[0].split('_')[0]
 
+
 def get_protein_ids(s):
     """
     Return a list of shortform protein IDs.
@@ -170,6 +177,12 @@ def get_shortstr(s):
 
 
 def get_index_list(l, ms):
+    """
+
+    :param l:
+    :param ms:
+    :return:
+    """
     if type(ms) != list and type(ms) != tuple:
         ms = [ms]
     return [l.index(s) for s in ms if s in l]

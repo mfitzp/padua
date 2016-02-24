@@ -84,9 +84,6 @@ def write_perseus(f, df):
     df.to_csv(f, index=False, header=False)
     
 
-def get_protein_id(s):
-    return s.split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
-
 
 def write_phosphopath(df, f):
     """
@@ -98,12 +95,17 @@ def write_phosphopath(df, f):
     Q86YP4	Q86YP4-S100	S100	1
     Q9H307	Q9H307-S100	S100	1
     Q8NEY1	Q8NEY1-S1000	S1000	1
-    
+
+    :param df:
+    :param f:
+    :return:
     """
 
-    proteins = [get_protein_id(k) for k in df.index.get_level_values('Proteins')]
+    def _protein_id(s): return s.split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
+
+    proteins = [_protein_id(k) for k in df.index.get_level_values('Proteins')]
     amino_acids = df.index.get_level_values('Amino acid')
-    positions = [get_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
+    positions = [_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
     multiplicity = [k[-1] for k in df.index.get_level_values('Multiplicity')]
 
     apos = ["%s%s" % x for x in zip(amino_acids, positions)]
@@ -130,6 +132,12 @@ def write_phosphopath_ratio(df, f, v, a=None, b=None):
     Q9Y4G8-S1022-1-1	0.518
     P35658-S1023-1-1	0.52
 
+    :param df:
+    :param f:
+    :param v:
+    :param a:
+    :param b:
+    :return:
     """
 
     proteins = [get_protein_id(k) for k in df.index.get_level_values('Proteins')]
