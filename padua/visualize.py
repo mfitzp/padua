@@ -1060,7 +1060,7 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
     The axis of clustering can be controlled with `cluster_cols` and `cluster_rows`. By default clustering is performed
     along the X-axis, therefore to cluster samples transpose the DataFrame as it is passed, using `df.T`.
 
-    Samples are z-scored along the 0-axis (y) by default. To override this use the `z_score param with the axis to `z_score`
+    Samples are z-scored along the 0-axis (y) by default. To override this use the `z_score` param with the axis to `z_score`
     or alternatively, `None`, to turn it off.
 
     If a `n_col_clusters` or `n_row_clusters` is specified, this defines the number of clusters to identify and highlight
@@ -1069,16 +1069,16 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
     If specified `fcol` will be used to colour the axes for matching samples.
 
-    :param df: Pandas `DataFrame to` cluster
-    :param cluster_cols: `bool` if `True` cluster along column axis
-    :param cluster_rows: `bool` if `True` cluster along row axis
-    :param n_col_clusters: `int` the ideal number of highlighted clusters in cols
-    :param n_row_clusters: `int` the ideal number of highlighted clusters in rows
-    :param fcol: `dict` of label:colors to be applied along the axes
-    :param z_score: `int` to specify the axis to Z score or `None` to disable
-    :param method: `str` describing cluster method, default ward
+    :param df: Pandas ``DataFrame`` to cluster
+    :param cluster_cols: ``bool`` if ``True`` cluster along column axis
+    :param cluster_rows: ``bool`` if ``True`` cluster along row axis
+    :param n_col_clusters: ``int`` the ideal number of highlighted clusters in cols
+    :param n_row_clusters: ``int`` the ideal number of highlighted clusters in rows
+    :param fcol: ``dict`` of label:colors to be applied along the axes
+    :param z_score: ``int`` to specify the axis to Z score or `None` to disable
+    :param method: ``str`` describing cluster method, default ward
     :param cmap: matplotlib colourmap for heatmap
-    :param return_clusters: `bool` return clusters in addition to axis
+    :param return_clusters: ``bool`` return clusters in addition to axis
     :return: matplotlib axis, or axis and cluster data
     """
 
