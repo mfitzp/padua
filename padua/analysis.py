@@ -22,12 +22,14 @@ from .utils import get_protein_id
 
 def correlation(df, rowvar=False):
     """
-    Calculate column-wise Pearson correlations
+    Calculate column-wise Pearson correlations using ``numpy.ma.corrcoef``
 
-
+    Input data is masked to ignore NaNs when calculating correlations. Data is returned as
+    a Pandas ``DataFrame` of column_n x column_n dimensions, with column index copied to
+    both axes.
 
     :param df: Pandas DataFrame
-    :return: Pandas DataFrame (n_columns x n_columns) of columnwise correlations
+    :return: Pandas DataFrame (n_columns x n_columns) of column-wise correlations
     """
 
     # Create a correlation matrix for all correlations
@@ -42,7 +44,22 @@ def correlation(df, rowvar=False):
     return cdf
     
     
-def pca(df, n_components=2, mean_center=False, *args, **kwargs):
+def pca(df, n_components=2, mean_center=False, **kwargs):
+    """
+    Principal Component Analysis, based on `sklearn.decomposition.PCA`
+
+    Performs a principal component analysis (PCA) on the supplied dataframe, selecting the first ``n_components`` components
+    in the resulting model. The model scores and weights are returned.
+
+    For more information on PCA and the algorithm used, see the `scikit-learn documentation. <http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_.
+
+    :param df: Pandas ``DataFrame`` to perform the analysis on
+    :param n_components: ``int`` number of components to select
+    :param mean_center: ``bool`` mean center the data before performing PCA
+    :param kwargs: additional keyword arguments to `sklearn.decomposition.PCA`
+    :return: scores ``DataFrame`` of PCA scores n_components x n_samples
+             weights ``DataFrame`` of PCA scores n_variables x n_components
+    """
     if not sklearn:
         assert('This library depends on scikit-learn (sklearn) to perform PCA analysis')
         
@@ -57,7 +74,7 @@ def pca(df, n_components=2, mean_center=False, *args, **kwargs):
         mean = np.mean(df.values, axis=0)
         df = df - mean
 
-    pca = PCA(n_components=n_components, *args, **kwargs)
+    pca = PCA(n_components=n_components, **kwargs)
     pca.fit(df.values.T)
 
     scores = pd.DataFrame(pca.transform(df.values.T)).T
