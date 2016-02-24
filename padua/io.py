@@ -87,14 +87,17 @@ def write_perseus(f, df):
 
 def write_phosphopath(df, f):
     """
-    Write out the data frame of phosphosites
-    protein, protein-Rsite, Rsite, multiplicity
-    Q13619	Q13619-S10	S10	1
-    Q9H3Z4	Q9H3Z4-S10	S10	1
-    Q6GQQ9	Q6GQQ9-S100	S100	1
-    Q86YP4	Q86YP4-S100	S100	1
-    Q9H307	Q9H307-S100	S100	1
-    Q8NEY1	Q8NEY1-S1000	S1000	1
+    Write out the data frame of phosphosites in the following format::
+
+        protein, protein-Rsite, Rsite, multiplicity
+        Q13619	Q13619-S10	S10	1
+        Q9H3Z4	Q9H3Z4-S10	S10	1
+        Q6GQQ9	Q6GQQ9-S100	S100	1
+        Q86YP4	Q86YP4-S100	S100	1
+        Q9H307	Q9H307-S100	S100	1
+        Q8NEY1	Q8NEY1-S1000	S1000	1
+
+    The file is written as a comma-separated (CSV) file to file ``f``.
 
     :param df:
     :param f:

@@ -51,7 +51,7 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     Performs a principal component analysis (PCA) on the supplied dataframe, selecting the first ``n_components`` components
     in the resulting model. The model scores and weights are returned.
 
-    For more information on PCA and the algorithm used, see the `scikit-learn documentation. <http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_.
+    For more information on PCA and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`.
 
     :param df: Pandas ``DataFrame`` to perform the analysis on
     :param n_components: ``int`` number of components to select
@@ -60,6 +60,7 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     :return: scores ``DataFrame`` of PCA scores n_components x n_samples
              weights ``DataFrame`` of PCA scores n_variables x n_components
     """
+
     if not sklearn:
         assert('This library depends on scikit-learn (sklearn) to perform PCA analysis')
         
@@ -90,6 +91,13 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
 
 
 def enrichment(df):
+    """
+    Calculate relative enrichment of peptide modifications.
+
+
+    :param df: Pandas ``DataFrame``
+    :return:
+    """
 
     values = []
     groups = []
@@ -113,6 +121,13 @@ def enrichment(df):
     
 
 def sitespeptidesproteins(df, site_localization_probability=0.75):
+    """
+
+
+    :param df:
+    :param site_localization_probability:
+    :return:
+    """
     sites = filters.filter_localization_probability(df, site_localization_probability)['Sequence window']
     peptides = set(df['Sequence window'])
     proteins = set([p.split(';')[0] for p in df['Proteins']])
@@ -120,6 +135,12 @@ def sitespeptidesproteins(df, site_localization_probability=0.75):
 
 
 def modifiedaminoacids(df):
+    """
+
+
+    :param df:
+    :return:
+    """
     amino_acids = list(df['Amino acid'].values)
     aas = set(amino_acids)
     quants = {}
@@ -133,7 +154,16 @@ def modifiedaminoacids(df):
 
 
 def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=True, fdr=0.05, ids_from=['Proteins','Protein IDs']):
-
+    """
+    
+    :param df:
+    :param enrichment:
+    :param organism:
+    :param summary:
+    :param fdr:
+    :param ids_from:
+    :return:
+    """
     if isinstance(df, pd.DataFrame) or isinstance(df, pd.Series):
         l = list(set(ids_from) & set(df.index.names))[0]
         data = "\n".join([get_protein_id(s) for s in df.index.get_level_values(l)])
