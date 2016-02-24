@@ -4,19 +4,19 @@ import requests
 
 try:
     import sklearn
-except:
+except ImportError:
     sklearn = False
 else:
     from sklearn.decomposition import PCA    
 
-from . import filters
+
 
 try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
 
-
+from . import filters
 from .utils import get_protein_id
 
 
@@ -25,7 +25,7 @@ def correlation(df, rowvar=False):
     Calculate column-wise Pearson correlations using ``numpy.ma.corrcoef``
 
     Input data is masked to ignore NaNs when calculating correlations. Data is returned as
-    a Pandas ``DataFrame` of column_n x column_n dimensions, with column index copied to
+    a Pandas ``DataFrame`` of column_n x column_n dimensions, with column index copied to
     both axes.
 
     :param df: Pandas DataFrame
@@ -51,7 +51,7 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     Performs a principal component analysis (PCA) on the supplied dataframe, selecting the first ``n_components`` components
     in the resulting model. The model scores and weights are returned.
 
-    For more information on PCA and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`.
+    For more information on PCA and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_.
 
     :param df: Pandas ``DataFrame`` to perform the analysis on
     :param n_components: ``int`` number of components to select
@@ -89,14 +89,17 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     return scores, weights
 
 
-
 def enrichment(df):
     """
     Calculate relative enrichment of peptide modifications.
 
+    Taking a modifiedsitepeptides ``DataFrame`` returns the relative enrichment of the specified
+    modification in the table.
+
+    The returned data columns are generated from the input data columns.
 
     :param df: Pandas ``DataFrame``
-    :return:
+    :return: Pandas ``DataFrame`` of percentage modifications in the supplied data.
     """
 
     values = []
@@ -130,7 +133,7 @@ def sitespeptidesproteins(df, site_localization_probability=0.75):
     - `peptides` the set of `Sequence windows` in the dataset (unique peptides)
     - `proteins` the set of unique leading peptides in the dataset
 
-    :param df: Pandas ``DataFrame` of processed data
+    :param df: Pandas ``DataFrame`` of processed data
     :param site_localization_probability: ``float`` site localization probability threshold (for sites calculation)
     :return: ``tuple`` of ``int``, containing sites, peptides, proteins
     """
@@ -167,15 +170,23 @@ def modifiedaminoacids(df):
 
 def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=True, fdr=0.05, ids_from=['Proteins','Protein IDs']):
     """
+    Calculate gene ontology (GO) enrichment for a specified set of indices, using the PantherDB GO enrichment service.
 
-    :param df:
-    :param enrichment:
-    :param organism:
-    :param summary:
-    :param fdr:
-    :param ids_from:
-    :return:
+    Provided with a processed data ``DataFrame`` will calculate the GO ontology enrichment specified by `enrichment`,
+    for the specified `organism`. The IDs to use for genes are taken from the field `ids_from`, which by default is
+    compatible with both proteinGroups and modified peptide tables. Setting the `fdr` parameter (default=0.05) sets
+    the cut-off to use for filtering the results. If `summary` is ``True`` (default) the returned ``DataFrame``
+    contains just the ontology summary and FDR.
+
+    :param df: Pandas ``DataFrame`` to
+    :param enrichment: ``str`` GO enrichment method to use (one of 'function', 'process', 'cellular_location', 'protein_class', 'pathway')
+    :param organism: ``str`` organism name (e.g. "Homo sapiens")
+    :param summary: ``bool`` return full, or summarised dataset
+    :param fdr: ``float`` FDR cut-off to use for returned GO enrichments
+    :param ids_from: ``list`` of ``str`` containing the index levels to select IDs from (genes, protein IDs, etc.) default=['Proteins','Protein IDs']
+    :return: Pandas ``DataFrame`` containing enrichments, sorted by P value.
     """
+
     if isinstance(df, pd.DataFrame) or isinstance(df, pd.Series):
         l = list(set(ids_from) & set(df.index.names))[0]
         data = "\n".join([get_protein_id(s) for s in df.index.get_level_values(l)])

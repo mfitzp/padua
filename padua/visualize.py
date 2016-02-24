@@ -1,37 +1,3 @@
-__author__ = 'mfitzp'
-
-import pandas as pd
-import numpy as np
-import scipy as sp
-
-from collections import defaultdict
-import re
-import itertools
-from .utils import qvalues
-
-import matplotlib
-import matplotlib as mpl
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-
-from statsmodels.stats.multitest import multipletests
-import warnings   
-
-
-import matplotlib.gridspec as gridspec
-from matplotlib.colors import colorConverter
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-import scipy.spatial.distance as distance
-import scipy.cluster.hierarchy as sch
-import matplotlib.cm as cm
-import matplotlib.image as mplimg
-
-
-from matplotlib.patches import Ellipse
-
-from io import BytesIO, StringIO
-
 """
 Visualization tools for proteomic data, using standard Pandas dataframe structures
 from imported data. These functions make some assumptions about the structure of
@@ -40,12 +6,32 @@ data, but generally try to accomodate.
 Depends on scikit-learn for PCA analysis
 """
 
+import pandas as pd
+import numpy as np
+import scipy as sp
+
+import warnings
+
+import scipy.spatial.distance as distance
+import scipy.cluster.hierarchy as sch
+
+import matplotlib
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import matplotlib.image as mplimg
+import matplotlib.cm as cm
+
+from matplotlib.patches import Ellipse
+from matplotlib.colors import colorConverter
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+from io import BytesIO, StringIO
+
 from . import analysis
 from . import process
-
-from .utils import get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
+from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
                    hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx
-
 
 
 # Add ellipses for confidence intervals, with thanks to Joe Kington

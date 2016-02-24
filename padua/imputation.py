@@ -1,9 +1,8 @@
 """
 Algorithms for imputing missing values in data
 """
-import pandas as pd
+
 import numpy as np
-import scipy as sp
 from sklearn.cross_decomposition import PLSRegression
 
 

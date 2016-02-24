@@ -1,5 +1,3 @@
-__author__ = 'mfitzp'
-
 import pandas as pd
 import numpy as np
 
@@ -83,7 +81,6 @@ def write_perseus(f, df):
     df = df.transpose().reset_index().transpose()
     df.to_csv(f, index=False, header=False)
     
-
 
 def write_phosphopath(df, f):
     """

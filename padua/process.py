@@ -1,10 +1,8 @@
-__author__ = 'mfitzp'
-
 import pandas as pd
 import numpy as np
-from collections import defaultdict
 import re
 import itertools
+
 
 def numeric(s):
     """
@@ -20,7 +18,8 @@ def numeric(s):
             return float(s)
         except ValueError:
             return s
-        
+
+
 def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True):
     """
     Build a MultiIndex from a design table.
@@ -177,8 +176,6 @@ def strip_index_labels(df, strip, axis=1):
         df.columns = [c.replace(strip, '') for c in df.columns]
 
     return df
-
-
 
 
 def combine_expression_columns(df, columns_to_combine, remove_combined=True):
