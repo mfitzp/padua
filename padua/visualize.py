@@ -541,7 +541,7 @@ def modificationlocalization(df):
     Plot the % of Class I, II and III localised peptides according to standard thresholds.
 
     Generates a pie chart showing the % of peptides that fall within the Class I, II and III
-    classifications based on localisation probability. These definitions are:
+    classifications based on localisation probability. These definitions are::
 
         Class I     0.75 > x
         Class II    0.50 > x <= 0.75

@@ -122,12 +122,19 @@ def enrichment(df):
 
 def sitespeptidesproteins(df, site_localization_probability=0.75):
     """
+    Generate summary count of modified sites, peptides and proteins in a processed dataset ``DataFrame``.
 
+    Returns the number of sites, peptides and proteins as calculated as follows:
 
-    :param df:
-    :param site_localization_probability:
-    :return:
+    - `sites` (>0.75; or specified site localization probability) count of all sites > threshold
+    - `peptides` the set of `Sequence windows` in the dataset (unique peptides)
+    - `proteins` the set of unique leading peptides in the dataset
+
+    :param df: Pandas ``DataFrame` of processed data
+    :param site_localization_probability: ``float`` site localization probability threshold (for sites calculation)
+    :return: ``tuple`` of ``int``, containing sites, peptides, proteins
     """
+
     sites = filters.filter_localization_probability(df, site_localization_probability)['Sequence window']
     peptides = set(df['Sequence window'])
     proteins = set([p.split(';')[0] for p in df['Proteins']])
@@ -136,11 +143,16 @@ def sitespeptidesproteins(df, site_localization_probability=0.75):
 
 def modifiedaminoacids(df):
     """
+    Calculate the number of modified amino acids in supplied ``DataFrame``.
 
+    Returns the total of all modifications and the total for each amino acid individually, as an ``int`` and a
+    ``dict`` of ``int``, keyed by amino acid, respectively.
 
-    :param df:
-    :return:
+    :param df: Pandas ``DataFrame`` containing processed data.
+    :return: total_aas ``int`` the total number of all modified amino acids
+             quants ``dict`` of ``int`` keyed by amino acid, giving individual counts for each aa.
     """
+
     amino_acids = list(df['Amino acid'].values)
     aas = set(amino_acids)
     quants = {}
@@ -155,7 +167,7 @@ def modifiedaminoacids(df):
 
 def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=True, fdr=0.05, ids_from=['Proteins','Protein IDs']):
     """
-    
+
     :param df:
     :param enrichment:
     :param organism:
