@@ -1,7 +1,0 @@
-numpy
-scipy
-matplotlib
-pandas
-statsmodels
-matplotlib-venn
-scikit-learn
