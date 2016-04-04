@@ -112,11 +112,9 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     :return: Generated axes
     """
 
-
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1,1,1)
     levels = [0,1]    
-
 
     for c in set(scores.columns.get_level_values('Group')):
 
@@ -156,7 +154,6 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
             r, ha = (30, 'left')
             ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
 
-        
     ax.set_xlabel(scores.index[pc1], fontsize=16)
     ax.set_ylabel(scores.index[pc2], fontsize=16)
     fig.tight_layout()
@@ -327,7 +324,6 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
         
     if labels_from is None:
         labels_from = list(df.index.names)
-
 
     if b is not None:
         # Calculate ratio between two groups
@@ -1037,7 +1033,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     return ax
     
     
-def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False):
+def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
     """
     Hierarchical clustering of samples or proteins
 
@@ -1132,11 +1128,11 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
 
     # cluster
     if cluster_rows:
-        row_pairwise_dists = distance.squareform(distance.pdist(dfc))
+        row_pairwise_dists = distance.squareform(rdistance_fn(dfc))
         row_clusters = sch.linkage(row_pairwise_dists, method=method)
 
     if cluster_cols:
-        col_pairwise_dists = distance.squareform(distance.pdist(dfc.T))
+        col_pairwise_dists = distance.squareform(cdistance_fn(dfc.T))
         col_clusters = sch.linkage(col_pairwise_dists, method=method)
 
     # heatmap with row names

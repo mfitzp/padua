@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import itertools
-
+from copy import copy
 
 def numeric(s):
     """
@@ -20,7 +20,7 @@ def numeric(s):
             return s
 
 
-def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True):
+def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True, use_unmatched_index=True):
     """
     Build a MultiIndex from a design table.
 
@@ -44,6 +44,8 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     if remove is None:
         remove = []
 
+    unmatched_for_index = []
+
     labels = design.index.values
     names = design.columns.values
     idx_levels = len(names)
@@ -62,7 +64,8 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
                 design[n] = design[n].astype(t)
     
     # Build the index
-    for l in df.columns.values:
+    for lo in df.columns.values:
+        l = copy(lo)
         for s in remove:
             l = l.replace(s, '')
         
@@ -74,21 +77,28 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
         try:
             # Index
             idx = design.loc[str(l)]
-        
+
         except:
-            # No match, fill with None
-            idx = tuple([None] * idx_levels)
-            
+            if use_unmatched_index:
+                unmatched_for_index.append(lo)
+            else:
+                # No match, fill with None
+                idx = tuple([None] * idx_levels)
+                indexes.append(idx)
+
         else:
             # We have a matched row, store it
             idx = tuple(idx.values)
-            
-    
-        indexes.append(idx)
+            indexes.append(idx)
 
     if axis == 0:
         df.index = pd.MultiIndex.from_tuples(indexes, names=names)
     else:
+
+        # If using unmatched for index, append
+        if use_unmatched_index:
+            df = df.set_index(unmatched_for_index, append=True)
+
         df.columns = pd.MultiIndex.from_tuples(indexes, names=names)
     
     return df
