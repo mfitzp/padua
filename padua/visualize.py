@@ -790,7 +790,7 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
     ax = plt.gca()
 
     if return_intersection:
-        return ax, intersection
+        return ax, list(intersection)
     else:
         return ax
 
