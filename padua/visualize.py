@@ -173,7 +173,7 @@ def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weight
     """
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1,1,1)
-    ax.plot(weights.iloc[:, pc])
+    ax.plot(weights.iloc[:, pc].values)
     ylim = np.max( np.abs( weights.values ) ) * 1.1
     ax.set_ylim( -ylim, +ylim  )
     ax.set_xlim(0, weights.shape[0])
