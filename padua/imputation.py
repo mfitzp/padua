@@ -42,7 +42,7 @@ def gaussian(df, width=0.3, downshift=-1.8, prefix=None):
 
     for i in mycols:
         data = df.iloc[:, i]
-        mask = data.isnull()
+        mask = data.isnull().values
         mean = data.mean(axis=0)
         stddev = data.std(axis=0)
 
@@ -50,10 +50,10 @@ def gaussian(df, width=0.3, downshift=-1.8, prefix=None):
         s = stddev*width[i]
 
         # Generate a list of random numbers for filling in
-        values = np.random.normal(loc=m, scale=s, size=df.shape[1])
+        values = np.random.normal(loc=m, scale=s, size=df.shape[0])
 
         # Now fill them in
-        df.values[i, mask] = values[mask]
+        df.iloc[mask, i] = values[mask]
 
     return df, imputed
 
@@ -80,24 +80,26 @@ def pls(df):
     ix_mask = np.arange(0, df.shape[1])
     total_n = len(missing_values)
 
-    df = df.fillna(0)
+    #dfi = df.fillna(0)
 
     plsr = PLSRegression(n_components=2)
-    
-    for n, p in enumerate(missing_values):
+
+    for n, p in enumerate(missing_values.values):
         # Generate model for this protein from missing data
         target = df.loc[p].values.copy().T
+
         ixes = ix_mask[ np.isnan(target) ]
-        
+
         # Fill missing values with row median for calculation
         target[np.isnan(target)] = np.nanmedian(target)
         plsr.fit(dfo.values.T, target)
-        
+
         # For each missing value, calculate imputed value from the column data input
         for ix in ixes:
             imputv = plsr.predict(dfo.iloc[:, ix])[0]
-            dfi.loc[p].ix[ix] = imputv
+            dfi.ix[p, ix] = imputv
 
         print("%d%%" % ((n/total_n)*100), end="\r")
+
 
     return dfi, imputed
