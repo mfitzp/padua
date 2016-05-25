@@ -20,7 +20,7 @@ def numeric(s):
             return s
 
 
-def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True, use_unmatched_index=True):
+def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True, unmatched_columns='index'):
     """
     Build a MultiIndex from a design table.
 
@@ -79,7 +79,7 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
             idx = design.loc[str(l)]
 
         except:
-            if use_unmatched_index:
+            if unmatched_columns:
                 unmatched_for_index.append(lo)
             else:
                 # No match, fill with None
@@ -96,8 +96,11 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     else:
 
         # If using unmatched for index, append
-        if use_unmatched_index:
+        if unmatched_columns == 'index':
             df = df.set_index(unmatched_for_index, append=True)
+
+        elif unmatched_columns == 'drop':
+            df = df.drop(unmatched_for_index, axis=1)
 
         df.columns = pd.MultiIndex.from_tuples(indexes, names=names)
     

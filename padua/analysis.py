@@ -16,7 +16,7 @@ try:
 except ImportError:
     from io import StringIO
 
-from . import filters
+from . import filters, process
 from .utils import get_protein_id
 
 
@@ -79,49 +79,85 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     pca.fit(df.values.T)
 
     scores = pd.DataFrame(pca.transform(df.values.T)).T
-    scores.index =  ['Principal Component %d' % (n+1) for n in range(0, scores.shape[0])]
+    scores.index = ['Principal Component %d (%.2f%%)' % ( (n+1), pca.explained_variance_ratio_[n]*100 ) for n in range(0, scores.shape[0])]
     scores.columns = df.columns
 
     weights = pd.DataFrame(pca.components_).T
     weights.index = df.index
-    weights.columns =  ['Weights on Principal Component %d' % (n+1) for n in range(0, weights.shape[1])]
+    weights.columns = ['Weights on Principal Component %d' % (n+1) for n in range(0, weights.shape[1])]
        
     return scores, weights
 
 
-def enrichment(df):
+def _non_zero_sum(df):
+    # Following is just to build the template; actual calculate below
+    dfo = df.sum(axis=0, level=0)
+
+    for c in df.columns.values:
+        dft = df[c]
+        dfo[c] = dft[ dft > 0].sum(axis=0, level=0)
+
+    return dfo
+
+
+def enrichment_from_evidence(dfe, modification="Phospho (STY)"):
     """
-    Calculate relative enrichment of peptide modifications.
+    Calculate relative enrichment of peptide modifications from evidence.txt.
 
     Taking a modifiedsitepeptides ``DataFrame`` returns the relative enrichment of the specified
     modification in the table.
 
     The returned data columns are generated from the input data columns.
 
-    :param df: Pandas ``DataFrame``
+    :param df: Pandas ``DataFrame`` of evidence
     :return: Pandas ``DataFrame`` of percentage modifications in the supplied data.
     """
 
-    values = []
-    groups = []
-    #totals = []
+    dfe = dfe.reset_index().set_index('Experiment')
 
-    dfr = df.sum(axis=1, level=0)
-    for c in dfr.columns.values:
-        dfx = dfr[c]
-        dfx = dfx.dropna(axis=0, how='any')
-        #total = len([m for m in dfx.index.values if m != 'Unmodified'])
-        total = dfx.index.values.shape[0]
-        # Sum up the number of phosphosites
-        dfx = dfx.reset_index().filter(regex='Sequence|Modifications').set_index('Sequence').sum(axis=0, level=0)
-        phosp = dfx[dfx > 0].shape[0]
+    dfe['Modifications'] = np.array([modification in m for m in dfe['Modifications']])
+    dfe = dfe.set_index('Modifications', append=True)
 
-        values.append((phosp, total-phosp))
-        groups.append(c)
-        #totals.append(total)
+    dfes = dfe.sum(axis=0, level=[0,1]).T
 
-    return pd.DataFrame(np.array(values).T, columns=groups, index=["",""])
-    
+    columns = dfes.sum(axis=1, level=0).columns
+
+    total = dfes.sum(axis=1, level=0).values.flatten() # Total values
+    modified = dfes.iloc[0, dfes.columns.get_level_values('Modifications').values ].values # Modified
+    enrichment = modified / total
+
+    return pd.DataFrame([enrichment], columns=columns, index=['% Enrichment'])
+
+
+
+
+def enrichment_from_msp(dfmsp, modification="Phospho (STY)"):
+    """
+    Calculate relative enrichment of peptide modifications from modificationSpecificPeptides.txt.
+
+    Taking a modifiedsitepeptides ``DataFrame`` returns the relative enrichment of the specified
+    modification in the table.
+
+    The returned data columns are generated from the input data columns.
+
+    :param df: Pandas ``DataFrame`` of modificationSpecificPeptides
+    :return: Pandas ``DataFrame`` of percentage modifications in the supplied data.
+    """
+
+    dfmsp['Modifications'] = np.array([modification in m for m in dfmsp['Modifications']])
+    dfmsp = dfmsp.set_index(['Modifications'])
+    dfmsp = dfmsp.filter(regex='Intensity ')
+
+    dfmsp[ dfmsp == 0] = np.nan
+    df_r = dfmsp.sum(axis=0, level=0)
+
+    modified = df_r.loc[True].values
+    total = df_r.sum(axis=0).values
+    enrichment = modified / total
+
+    return pd.DataFrame([enrichment], columns=dfmsp.columns, index=['% Enrichment'])
+
+
 
 def sitespeptidesproteins(df, site_localization_probability=0.75):
     """
@@ -140,7 +176,7 @@ def sitespeptidesproteins(df, site_localization_probability=0.75):
 
     sites = filters.filter_localization_probability(df, site_localization_probability)['Sequence window']
     peptides = set(df['Sequence window'])
-    proteins = set([p.split(';')[0] for p in df['Proteins']])
+    proteins = set([str(p).split(';')[0] for p in df['Proteins']])
     return len(sites), len(peptides), len(proteins)
 
 

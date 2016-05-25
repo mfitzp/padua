@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def read_maxquant(f, header=0, **kwargs):
+def read_maxquant(f, header=0, index_col='id', **kwargs):
     """
     Load the quantified table output from MaxQuant run, e.g.
 
@@ -12,8 +12,7 @@ def read_maxquant(f, header=0, **kwargs):
     :param f: Source file
     :return: Pandas dataframe of imported data
     """
-    df = pd.read_csv(f, delimiter='\t', header=header, **kwargs)
-    df.set_index('id', inplace=True)
+    df = pd.read_csv(f, delimiter='\t', header=header, index_col=index_col, **kwargs)
 
     return df
 
@@ -82,7 +81,7 @@ def write_perseus(f, df):
     df.to_csv(f, index=False, header=False)
     
 
-def write_phosphopath(df, f):
+def write_phosphopath(df, f, extra_columns=None):
     """
     Write out the data frame of phosphosites in the following format::
 
@@ -112,8 +111,11 @@ def write_phosphopath(df, f):
     prar = ["%s-%s" % x for x in zip(proteins, apos)]
 
     phdf = pd.DataFrame(np.array(list(zip(proteins, prar, apos, multiplicity))))
-    phdf.to_csv(f, sep='\t', index=None, header=None)
+    if extra_columns:
+        for c in extra_columns:
+            phdf[c] = df[c].values
 
+    phdf.to_csv(f, sep='\t', index=None, header=None)
 
 def write_phosphopath_ratio(df, f, v, a=None, b=None):
     """
