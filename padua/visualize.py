@@ -34,6 +34,15 @@ from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list
                    hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx
 
 
+import requests
+from requests_toolbelt import MultipartEncoder
+
+import re
+
+uniprot_kegg_cache = {}
+
+
+
 # Add ellipses for confidence intervals, with thanks to Joe Kington
 # http://stackoverflow.com/questions/12301071/multidimensional-confidence-intervals
 def plot_point_cov(points, nstd=2, **kwargs):
@@ -152,7 +161,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
 
         for n, (x, y) in enumerate(scores_f.T.values):
             r, ha = (30, 'left')
-            ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
+            ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs, ', '), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
 
     ax.set_xlabel(scores.index[pc1], fontsize=16)
     ax.set_ylabel(scores.index[pc2], fontsize=16)
@@ -240,7 +249,7 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
     :return:
     """
 
-    scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
+    scores, weights, loadings = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
     scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
     weights_ax = []
@@ -252,6 +261,127 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
         return scores, weights
     else:
         return scores_ax, weights_ax
+
+
+def plsda(df, a, b, n_components=2, mean_center=False, scale=True, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=False, *args, **kwargs):
+    """
+    Partial Least Squares Regression Analysis, based on `sklearn.cross_decomposition.PLSRegression`
+
+    Performs a partial least squares regression (PLS-R) on the supplied dataframe ``df``
+    against the provided continuous variable ``v``, selecting the first ``n_components``.
+
+    For more information on PLS regression and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html>`_.
+
+    Resulting scores and weights plots are generated showing the distribution of samples within the resulting
+    PCA space. Sample color and marker size can be controlled by label, lookup and calculation (lambda) to
+    generate complex plots highlighting sample separation.
+
+    For further information see the examples included in the documentation.
+
+    :param df: Pandas `DataFrame`
+    :param a: Column selector for group a
+    :param b: Column selector for group b
+    :param n_components: `int` number of Principal components to return
+    :param mean_center: `bool` mean center the data before performing PCA
+    :param fcol: `dict` of indexers:colors, where colors are hex colors or matplotlib color names
+    :param ecol: `dict` of indexers:colors, where colors are hex colors or matplotlib color names
+    :param marker: `str` matplotlib marker name (default "o")
+    :param markersize: `int` or `callable` which returns an `int` for a given indexer
+    :param threshold: `float` weight threshold for plot (horizontal line)
+    :param label_threshold: `float` weight threshold over which to draw labels
+    :param label_weights: `list` of `str`
+    :param label_scores: `list` of `str`
+    :param return_df: `bool` return the resulting scores, weights as pandas DataFrames
+    :param show_covariance_ellipse: `bool` show the covariance ellipse around each group
+    :param args: additional arguments passed to analysis.pca
+    :param kwargs: additional arguments passed to analysis.pca
+    :return:
+    """
+
+    scores, weights, loadings = analysis.plsda(df, a, b, n_components=n_components, scale=scale, *args, **kwargs)
+
+    scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
+    weights_ax = []
+
+    for pc in range(0, weights.shape[1]):
+        weights_ax.append( _pca_weights(weights, pc, threshold=threshold, label_threshold=label_threshold, label_weights=label_weights) )
+
+    if return_df:
+        return scores, weights
+    else:
+        return scores_ax, weights_ax
+
+
+
+def plsr(df, v, n_components=2, mean_center=False, scale=True, fcol=None, ecol=None, marker='o', markersize=40, threshold=None, label_threshold=None, label_weights=None, label_scores=None, return_df=False, show_covariance_ellipse=False, *args, **kwargs):
+    """
+    Partial Least Squares Regression Analysis, based on `sklearn.cross_decomposition.PLSRegression`
+
+    Performs a partial least squares regression (PLS-R) on the supplied dataframe ``df``
+    against the provided continuous variable ``v``, selecting the first ``n_components``.
+
+    For more information on PLS regression and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html>`_.
+
+    Resulting scores, weights and regression plots are generated showing the distribution of samples within the resulting
+    PCA space. Sample color and marker size can be controlled by label, lookup and calculation (lambda) to
+    generate complex plots highlighting sample separation.
+
+    For further information see the examples included in the documentation.
+
+    :param df: Pandas `DataFrame`
+    :param v: Continuous variable to perform regression against
+    :param n_components: `int` number of Principal components to return
+    :param mean_center: `bool` mean center the data before performing PCA
+    :param fcol: `dict` of indexers:colors, where colors are hex colors or matplotlib color names
+    :param ecol: `dict` of indexers:colors, where colors are hex colors or matplotlib color names
+    :param marker: `str` matplotlib marker name (default "o")
+    :param markersize: `int` or `callable` which returns an `int` for a given indexer
+    :param threshold: `float` weight threshold for plot (horizontal line)
+    :param label_threshold: `float` weight threshold over which to draw labels
+    :param label_weights: `list` of `str`
+    :param label_scores: `list` of `str`
+    :param return_df: `bool` return the resulting scores, weights as pandas DataFrames
+    :param show_covariance_ellipse: `bool` show the covariance ellipse around each group
+    :param args: additional arguments passed to analysis.pca
+    :param kwargs: additional arguments passed to analysis.pca
+    :return:
+    """
+
+    scores, weights, loadings, predicted = analysis.plsr(df, v, n_components=n_components, scale=scale, *args, **kwargs)
+
+    scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
+    weights_ax = []
+
+    for pc in range(0, weights.shape[1]):
+        weights_ax.append( _pca_weights(weights, pc, threshold=threshold, label_threshold=label_threshold, label_weights=label_weights) )
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(1,1,1)
+
+    slope, intercept, r, p, se = sp.stats.linregress(v, predicted.flatten())
+
+    # Add regression line
+    xmin, xmax = np.min(v), np.max(v)
+    ax.plot([xmin, xmax],[xmin*slope+intercept, xmax*slope+intercept], lw=1, c='k')
+
+    ax.scatter(v, predicted, s=50, alpha=0.5)
+    ax.set_xlabel("Actual values")
+    ax.set_ylabel("Predicted values")
+
+    ax.set_aspect(1./ax.get_data_ratio())
+
+    ax.text(0.05, 0.95, '$y = %.2f+%.2fx$' % (intercept, slope), horizontalalignment='left', transform=ax.transAxes, color='black', fontsize=14)
+
+    ax.text(0.95, 0.15, '$r^2$ = %.2f' % (r**2), horizontalalignment='right', transform=ax.transAxes, color='black', fontsize=14)
+    ax.text(0.95, 0.10, '$p$ = %.2f' % p, horizontalalignment='right', transform=ax.transAxes, color='black', fontsize=14)
+    ax.text(0.95, 0.05, '$SE$ = %.2f' % se, horizontalalignment='right', transform=ax.transAxes, color='black', fontsize=14)
+
+
+    if return_df:
+        return scores, weights, loadings, predicted
+    else:
+        return scores_ax, weights_ax, ax
+
 
     
 def enrichment(dfenr, include=None):
@@ -284,7 +414,7 @@ def enrichment(dfenr, include=None):
     return axes
 
 
-def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, fc='grey'):
+def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, label_format=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, xlim=None, ylim=None, fc='grey'):
     """
     Volcano plot of two sample groups showing t-test p value vs. log2(fc).
 
@@ -324,7 +454,7 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
     if np.any(df.values < 0) and not is_log2:
         warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
 
-    if fillna:
+    if fillna is not None:
         df = df.fillna(fillna)
         
     if labels_from is None:
@@ -363,8 +493,7 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
     p[ ginv ] = np.nan
 
     if ax is None:
-        fig = plt.figure()
-        fig.set_size_inches(10,10)
+        fig = plt.figure(figsize=figsize)
 
         ax = fig.add_subplot(1,1,1)
 
@@ -419,15 +548,15 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
     _FILTER_OUT1 = _FILTER_OUT & ~np.isnan(p) & (np.array(p) > fdr)
     scatter(ax, _FILTER_OUT1, fc, alpha=0.3)
 
-    _FILTER_OUT1 = _FILTER_OUT & (np.array(p) <= fdr)
-    scatter(ax, _FILTER_OUT1, 'blue', alpha=0.3)
+    _FILTER_OUT2 = _FILTER_OUT & (np.array(p) <= fdr)
+    scatter(ax, _FILTER_OUT2, 'blue', alpha=0.3)
 
     if labels_for:
         idxs = get_index_list( df.index.names, labels_from )
         for shown, label, x, y in zip( _FILTER_IN , df.index.values, dr, -np.log10(p)):
             
             if shown or not label_sig_only:
-                label = build_combined_label( label, idxs)
+                label = build_combined_label( label, idxs, label_format=label_format)
                 
                 if labels_for == True or any([l in label for l in labels_for]):
                     r, ha, ofx, ofy =  (30, 'left', 0.15, 0.02) if x >= 0 else (-30, 'right', -0.15, 0.02)
@@ -438,17 +567,34 @@ def volcano(df, a, b=None, fdr=0.05, threshold=2, minimum_sample_n=0, estimate_q
 
     ax.set_xlabel('log$_2$ ratio')
 
-    
     # Centre the plot horizontally
-    xmin, xmax = ax.get_xlim()
-    xlim = np.max(np.abs([xmin, xmax]))
+    if xlim is None:
+        xmin, xmax = ax.get_xlim()
+        xlim = np.max(np.abs([xmin, xmax]))
     ax.set_xlim((-xlim, xlim))
-    _, ymax = ax.get_ylim()
-    ax.set_ylim((0, ymax))
+
+    if ylim is None:
+        _, ylim = ax.get_ylim()
+    ax.set_ylim((0, ylim))
 
     if title:
         ax.set_title(title)
-    
+
+    if show_numbers:
+        # Annotate axes with the numbers of points in each category (up & down):
+        # filtered (red), Sig-filtered (blue), nonsig (grey)
+        dr_up, dr_down = dr > 0, dr < 0
+        grey_up, blue_up, red_up = np.sum(_FILTER_OUT1 & dr_up), np.sum(_FILTER_OUT2 & dr_up), np.sum(_FILTER_IN & dr_up)
+        grey_do, blue_do, red_do = np.sum(_FILTER_OUT1 & dr_down), np.sum(_FILTER_OUT2 & dr_down), np.sum(_FILTER_IN & dr_down)
+
+        ax.text(0.95, 0.95, '%d' % red_up, horizontalalignment='right', transform=ax.transAxes, color='red', fontsize=14)
+        ax.text(0.95, 0.90, '%d' % blue_up, horizontalalignment='right', transform=ax.transAxes, color='blue', fontsize=14)
+        ax.text(0.95, 0.05, '%d' % grey_up, horizontalalignment='right', transform=ax.transAxes, color='grey', fontsize=14)
+
+        ax.text(0.05, 0.95, '%d' % red_do, horizontalalignment='left', transform=ax.transAxes, color='red', fontsize=14)
+        ax.text(0.05, 0.90, '%d' % blue_do, horizontalalignment='left', transform=ax.transAxes, color='blue', fontsize=14)
+        ax.text(0.05, 0.05, '%d' % grey_do, horizontalalignment='left', transform=ax.transAxes, color='grey', fontsize=14)
+
     return ax, p, dr, _FILTER_IN
     
 
@@ -767,8 +913,8 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
     """
     try:
         import matplotlib_venn as mplv
-    except:
-        ImportError("To plot venn diagrams, install matplotlib-venn package: pip install matplotlib-venn")
+    except ImportError:
+        raise ImportError("To plot venn diagrams, install matplotlib-venn package: pip install matplotlib-venn")
     
     if labels is None:
         labels = ["A", "B", "C"]
@@ -960,7 +1106,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     annotate_obj(ax, number_of_annotations, labels[-1:-_n:-1], x[-1:-_n:-1], y[-1:-_n:-1], -1, -1, 'right')
     annotate_obj(ax, number_of_annotations, labels[:_n], x[:_n], y[:_n], 0, +1, 'left')
 
-    if go_enrichment and ids is not None:
+    if show_go_enrichment and ids is not None:
 
         # Calculate orders of magnitude (range)
         oomr = int(np.round(np.min(y))), int(np.round(np.max(y)))
@@ -1369,3 +1515,120 @@ def comparedist(df1, df2, bins=50):
 
     return fig
 
+
+
+def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is_log2=False, fillna=None, z_score=1):
+    """
+    Visualize data on a kegg pathway.
+
+
+    :param df:
+    :param pathway:
+    :param a:
+    :param b:
+    :param ids_from:
+    :param cmap:
+    :param is_log2:
+    :param fillna:
+    :param z_score:
+    :return:
+    """
+
+    try:
+        import uniprot as up
+    except ImportError:
+        raise ImportError("Mapping from KEGG to UniProt IDs requires uniprot package; pip install uniprot")
+
+
+    df = df.copy()
+
+    if np.any(df.values < 0) and not is_log2:
+        warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
+
+    if fillna is not None:
+        df = df.fillna(fillna)
+
+    if z_score is None:
+        pass
+    elif z_score == 0:
+        df = (df - df.median(axis=0)) / df.std(axis=0)
+    elif z_score == 1:
+        df = ((df.T - df.median(axis=1).T) / df.std(axis=1).T).T
+
+
+    if b is not None:
+        # Calculate ratio between two groups
+        g1, g2 = df[a].values, df[b].values
+
+        if is_log2:
+            dr = np.nanmean(g2, axis=1) - np.nanmean(g1, axis=1)
+        else:
+            dr = np.log2(np.nanmean(g2, axis=1) / np.nanmean(g1, axis=1))
+
+    else:
+        g1 = df[a].values
+        dr = np.nanmean(g1, axis=1)
+
+
+
+
+    maxi = np.max(abs(dr))
+    norm = mpl.colors.Normalize(vmin=-maxi, vmax=maxi)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cm.PuOr_r) # Orange up
+
+    node_colors = {}
+    for p, v in zip(df.index.get_level_values(ids_from), dr):
+        pid = p.split(";")[-1]
+
+        if "_" in pid:
+            pid = pid[:pid.index("_")]
+
+        node_colors[pid] = mpl.colors.rgb2hex(mapper.to_rgba(v))
+
+
+    global uniprot_kegg_cache
+
+    # Only do this once
+    upids = list( node_colors.keys() )
+    upids = [p for p in upids if p not in uniprot_kegg_cache.keys()]
+
+    if upids:
+        new_pairs = up.batch_uniprot_id_mapping_pairs('ACC+ID', 'KEGG_ID', upids)
+        uniprot_kegg_cache.update( dict(new_pairs) )
+
+        for p in upids:
+            if p not in uniprot_kegg_cache:
+                uniprot_kegg_cache[p] = None # Not found, don't look again
+
+    with StringIO() as f:
+        f.write('#hsa\tData\n')
+        for k, c in list(node_colors.items()):
+            if k in uniprot_kegg_cache and uniprot_kegg_cache[k] is not None:
+                kid = uniprot_kegg_cache[k]
+                f.write('%s\t%s\n' % (kid.split(':')[-1], c ))
+
+        # Reset file
+        f.seek(0)
+
+        url = 'http://www.kegg.jp/kegg-bin/mcolor_pathway'
+        m = MultipartEncoder(
+            fields={
+                'map': pathway,
+                'mapping_list': ('filename', f),
+                'mode': 'color',
+                'submit': 'Exec',
+                'reference': 'white',
+                 }
+        )
+
+    r = requests.post(url, data=m, headers={'Content-Type': m.content_type})
+    if r.status_code == 200:
+        ms = re.finditer("document.pathwayimage.src='(/tmp/mark_pathway[^']*?)'.*?>(.*?)<", r.text)
+        m = list(ms)[0]
+
+        # Download image data
+        image = Image.open(requests.get('http://www.kegg.jp%s' % m.group(1), stream=True).raw)
+        width, height = image.size   # Get dimensions
+        image = image.crop((1, 1, width-1, height-1)) # Crop black outline
+
+        return image

@@ -29,5 +29,7 @@ setup(
         'statsmodels',
         'matplotlib-venn',
         'scikit-learn',
+        'requests',
+        'requests_toolbelt',
     ]
 )

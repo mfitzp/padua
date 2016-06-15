@@ -186,7 +186,7 @@ def get_index_list(l, ms):
     return [l.index(s) for s in ms if s in l]
 
 
-def build_combined_label(sl, idxs, sep=' '):
+def build_combined_label(sl, idxs, sep=' ', label_format=None):
     """
     Generate a combined label from a list of indexes
     into sl, by joining them with `sep` (str).
@@ -199,7 +199,10 @@ def build_combined_label(sl, idxs, sep=' '):
 
     :return: `str` of combined label
     """
-    return sep.join([get_shortstr(str(sl[n])) for n in idxs])
+    if label_format:
+        return label_format % tuple([get_shortstr(str(sl[n])) for n in idxs])
+    else:
+        return sep.join([get_shortstr(str(sl[n])) for n in idxs])
 
 
 def hierarchical_match(d, k, default=None):

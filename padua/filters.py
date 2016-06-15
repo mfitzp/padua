@@ -47,10 +47,21 @@ def remove_reverse(df):
     """
     return remove_columns_containing(df, 'Reverse', '+')
 
+def remove_contaminants(df):
+    """
+    Remove rows with a + in the 'Contaminants' column
+
+    Return a ``DataFrame`` where rows where there is a "+" in the column 'Contaminants' are removed.
+    Filters data to remove peptides matched as reverse.
+
+    :param df: Pandas ``DataFrame``
+    :return: filtered Pandas ``DataFrame``
+    """
+    return remove_columns_containing(df, 'Contaminant', '+')
 
 def remove_potential_contaminants(df):
     """
-    Remove rows with a + in the 'Contaminants' column
+    Remove rows with a + in the 'Potential contaminant' column
 
     Return a ``DataFrame`` where rows where there is a "+" in the column 'Contaminants' are removed.
     Filters data to remove peptides matched as reverse.

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+from .utils import get_protein_id
 
 def read_maxquant(f, header=0, index_col='id', **kwargs):
     """
@@ -100,7 +101,7 @@ def write_phosphopath(df, f, extra_columns=None):
     :return:
     """
 
-    def _protein_id(s): return s.split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
+    def _protein_id(s): return str(s).split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
 
     proteins = [_protein_id(k) for k in df.index.get_level_values('Proteins')]
     amino_acids = df.index.get_level_values('Amino acid')
@@ -136,7 +137,8 @@ def write_phosphopath_ratio(df, f, v, a=None, b=None):
 
     :param df:
     :param f:
-    :param v:
+    :param v: Value ratio
+    :param t: Timepoint
     :param a:
     :param b:
     :return:
@@ -145,9 +147,11 @@ def write_phosphopath_ratio(df, f, v, a=None, b=None):
     proteins = [get_protein_id(k) for k in df.index.get_level_values('Proteins')]
     amino_acids = df.index.get_level_values('Amino acid')
     positions = [get_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
-    multiplicity = [k[-1] for k in df.index.get_level_values('Multiplicity')]
+    multiplicity = [int(k[-1]) for k in df.index.get_level_values('Multiplicity')]
+
     apos = ["%s%s" % x for x in zip(amino_acids, positions)]
-    prar = ["%s-%s-1-%s" % x for x in zip(proteins, apos, multiplicity)]
+
+    prar = ["%s-%s-%d-1" % x for x in zip(proteins, apos, multiplicity)]
 
     phdf = pd.DataFrame(np.array(list(zip(prar, v))))
     phdf.columns = ["ID", "Ratio"]

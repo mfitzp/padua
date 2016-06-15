@@ -58,7 +58,7 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     :param mean_center: ``bool`` mean center the data before performing PCA
     :param kwargs: additional keyword arguments to `sklearn.decomposition.PCA`
     :return: scores ``DataFrame`` of PCA scores n_components x n_samples
-             weights ``DataFrame`` of PCA scores n_variables x n_components
+             weights ``DataFrame`` of PCA weights n_variables x n_components
     """
 
     if not sklearn:
@@ -87,6 +87,131 @@ def pca(df, n_components=2, mean_center=False, **kwargs):
     weights.columns = ['Weights on Principal Component %d' % (n+1) for n in range(0, weights.shape[1])]
        
     return scores, weights
+
+
+def plsda(df, a, b, n_components=2, mean_center=False, scale=True, **kwargs):
+    """
+    Partial Least Squares Discriminant Analysis, based on `sklearn.cross_decomposition.PLSRegression`
+
+    Performs a binary group partial least squares discriminant analysis (PLS-DA) on the supplied
+    dataframe, selecting the first ``n_components``.
+
+    Sample groups are defined by the selectors ``a`` and ``b`` which are used to select columns
+    from the supplied dataframe. The result model is applied to the entire dataset,
+    projecting non-selected samples into the same space.
+
+    For more information on PLS regression and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html>`_.
+
+    :param df: Pandas ``DataFrame`` to perform the analysis on
+    :param a: Column selector for group a
+    :param b: Column selector for group b
+    :param n_components: ``int`` number of components to select
+    :param mean_center: ``bool`` mean center the data before performing PLS regression
+    :param kwargs: additional keyword arguments to `sklearn.cross_decomposition.PLSRegression`
+    :return: scores ``DataFrame`` of PLSDA scores n_components x n_samples
+             weights ``DataFrame`` of PLSDA weights n_variables x n_components
+    """
+
+    if not sklearn:
+        assert('This library depends on scikit-learn (sklearn) to perform PLS-DA')
+
+    from sklearn.cross_decomposition import PLSRegression
+
+    df = df.copy()
+
+    # We have to zero fill, nan errors in PLSRegression
+    df[ np.isnan(df) ] = 0
+
+    if mean_center:
+        mean = np.mean(df.values, axis=0)
+        df = df - mean
+
+    sxa, _ = df.columns.get_loc_level(a)
+    sxb, _ = df.columns.get_loc_level(b)
+
+    dfa = df.iloc[:, sxa]
+    dfb = df.iloc[:, sxb]
+
+    dff = pd.concat([dfa, dfb], axis=1)
+    y = np.ones(dff.shape[1])
+    y[np.arange(dfa.shape[1])] = 0
+
+    plsr = PLSRegression(n_components=n_components, scale=scale, **kwargs)
+    plsr.fit(dff.values.T, y)
+
+    # Apply the generated model to the original data
+    x_scores = plsr.transform(df.values.T)
+
+    scores = pd.DataFrame(x_scores.T)
+    scores.index = ['Latent Variable %d' % (n+1) for n in range(0, scores.shape[0])]
+    scores.columns = df.columns
+
+    weights = pd.DataFrame(plsr.x_weights_)
+    weights.index = df.index
+    weights.columns = ['Weights on Latent Variable %d' % (n+1) for n in range(0, weights.shape[1])]
+
+    loadings = pd.DataFrame(plsr.x_loadings_)
+    loadings.index = df.index
+    loadings.columns = ['Loadings on Latent Variable %d' % (n+1) for n in range(0, loadings.shape[1])]
+
+    return scores, weights, loadings
+
+
+def plsr(df, v, n_components=2, mean_center=False, scale=True, **kwargs):
+    """
+    Partial Least Squares Regression Analysis, based on `sklearn.cross_decomposition.PLSRegression`
+
+    Performs a partial least squares regression (PLS-R) on the supplied dataframe ``df``
+    against the provided continuous variable ``v``, selecting the first ``n_components``.
+
+    For more information on PLS regression and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html>`_.
+
+    :param df: Pandas ``DataFrame`` to perform the analysis on
+    :param v: Continuous variable to perform regression against
+    :param n_components: ``int`` number of components to select
+    :param mean_center: ``bool`` mean center the data before performing PLS regression
+    :param kwargs: additional keyword arguments to `sklearn.cross_decomposition.PLSRegression`
+    :return: scores ``DataFrame`` of PLS-R scores n_components x n_samples
+             weights ``DataFrame`` of PLS-R weights n_variables x n_components
+    """
+
+    if not sklearn:
+        assert('This library depends on scikit-learn (sklearn) to perform PLS-DA')
+
+    from sklearn.cross_decomposition import PLSRegression
+
+    df = df.copy()
+
+    # We have to zero fill, nan errors in PLSRegression
+    df[ np.isnan(df) ] = 0
+
+    if mean_center:
+        mean = np.mean(df.values, axis=0)
+        df = df - mean
+
+    #TODO: Extract values if v is DataFrame?
+
+    plsr = PLSRegression(n_components=n_components, scale=scale, **kwargs)
+    plsr.fit(df.values.T, v)
+
+    scores = pd.DataFrame(plsr.x_scores_.T)
+    scores.index = ['Latent Variable %d' % (n+1) for n in range(0, scores.shape[0])]
+    scores.columns = df.columns
+
+    weights = pd.DataFrame(plsr.x_weights_)
+    weights.index = df.index
+    weights.columns = ['Weights on Latent Variable %d' % (n+1) for n in range(0, weights.shape[1])]
+
+    loadings = pd.DataFrame(plsr.x_loadings_)
+    loadings.index = df.index
+    loadings.columns = ['Loadings on Latent Variable %d' % (n+1) for n in range(0, loadings.shape[1])]
+
+    #r = plsr.score(df.values.T, v)
+    predicted = plsr.predict(df.values.T)
+
+    return scores, weights, loadings, predicted
+
+
 
 
 def _non_zero_sum(df):
@@ -252,4 +377,4 @@ def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=Tr
     if fdr:
         go = go[ go["P"] < fdr ]
 
-    return go.sort("P", ascending=True)
+    return go.sort_values(by="P", ascending=True)
