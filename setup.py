@@ -31,5 +31,6 @@ setup(
         'scikit-learn',
         'requests',
         'requests_toolbelt',
+        'jinja2',
     ]
 )
