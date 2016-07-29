@@ -249,7 +249,7 @@ def pca(df, n_components=2, mean_center=False, fcol=None, ecol=None, marker='o',
     :return:
     """
 
-    scores, weights, loadings = analysis.pca(df, n_components=n_components, *args, **kwargs)
+    scores, weights = analysis.pca(df, n_components=n_components, *args, **kwargs)
 
     scores_ax = _pca_scores(scores, fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
     weights_ax = []
@@ -414,7 +414,7 @@ def enrichment(dfenr, include=None):
     return axes
 
 
-def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, label_format=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, xlim=None, ylim=None, fc='grey'):
+def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, label_format=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, xlim=None, ylim=None, fc='grey', fc_sig='blue', fc_sigr='red'):
     """
     Volcano plot of two sample groups showing t-test p value vs. log2(fc).
 
@@ -508,8 +508,8 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
     s0x, s0y, s0fn = calculate_s0_curve(s0, fdr, min(fdr/2, np.nanmin(p)), np.log2(threshold), np.nanmax(np.abs(dr)), curve_interval=0.001)
 
     if draw_fdr is True:
-        ax.plot(s0x, -np.log10(s0y), 'r', lw=1 )
-        ax.plot(-s0x, -np.log10(s0y), 'r', lw=1 )
+        ax.plot(s0x, -np.log10(s0y), fc_sigr, lw=1 )
+        ax.plot(-s0x, -np.log10(s0y), fc_sigr, lw=1 )
 
     # Select data based on s0 curve
     _FILTER_IN = []
@@ -549,7 +549,7 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
     scatter(ax, _FILTER_OUT1, fc, alpha=0.3)
 
     _FILTER_OUT2 = _FILTER_OUT & (np.array(p) <= fdr)
-    scatter(ax, _FILTER_OUT2, 'blue', alpha=0.3)
+    scatter(ax, _FILTER_OUT2, fc_sig, alpha=0.3)
 
     if labels_for:
         idxs = get_index_list( df.index.names, labels_from )
@@ -562,7 +562,7 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
                     r, ha, ofx, ofy =  (30, 'left', 0.15, 0.02) if x >= 0 else (-30, 'right', -0.15, 0.02)
                     t = ax.text(x+ofx, y+ofy, label , rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
 
-    scatter(ax, _FILTER_IN, 'red')
+    scatter(ax, _FILTER_IN, fc_sigr)
     
 
     ax.set_xlabel('log$_2$ ratio')
@@ -587,13 +587,13 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
         grey_up, blue_up, red_up = np.sum(_FILTER_OUT1 & dr_up), np.sum(_FILTER_OUT2 & dr_up), np.sum(_FILTER_IN & dr_up)
         grey_do, blue_do, red_do = np.sum(_FILTER_OUT1 & dr_down), np.sum(_FILTER_OUT2 & dr_down), np.sum(_FILTER_IN & dr_down)
 
-        ax.text(0.95, 0.95, '%d' % red_up, horizontalalignment='right', transform=ax.transAxes, color='red', fontsize=14)
-        ax.text(0.95, 0.90, '%d' % blue_up, horizontalalignment='right', transform=ax.transAxes, color='blue', fontsize=14)
-        ax.text(0.95, 0.05, '%d' % grey_up, horizontalalignment='right', transform=ax.transAxes, color='grey', fontsize=14)
+        ax.text(0.95, 0.95, '%d' % red_up, horizontalalignment='right', transform=ax.transAxes, color=fc_sigr, fontsize=14)
+        ax.text(0.95, 0.90, '%d' % blue_up, horizontalalignment='right', transform=ax.transAxes, color=fc_sig, fontsize=14)
+        ax.text(0.95, 0.05, '%d' % grey_up, horizontalalignment='right', transform=ax.transAxes, color=fc, fontsize=14)
 
-        ax.text(0.05, 0.95, '%d' % red_do, horizontalalignment='left', transform=ax.transAxes, color='red', fontsize=14)
-        ax.text(0.05, 0.90, '%d' % blue_do, horizontalalignment='left', transform=ax.transAxes, color='blue', fontsize=14)
-        ax.text(0.05, 0.05, '%d' % grey_do, horizontalalignment='left', transform=ax.transAxes, color='grey', fontsize=14)
+        ax.text(0.05, 0.95, '%d' % red_do, horizontalalignment='left', transform=ax.transAxes, color=fc_sigr, fontsize=14)
+        ax.text(0.05, 0.90, '%d' % blue_do, horizontalalignment='left', transform=ax.transAxes, color=fc_sig, fontsize=14)
+        ax.text(0.05, 0.05, '%d' % grey_do, horizontalalignment='left', transform=ax.transAxes, color=fc, fontsize=14)
 
     return ax, p, dr, _FILTER_IN
     
@@ -915,7 +915,10 @@ def venn(df1, df2, df3=None, labels=None, ix1=None, ix2=None, ix3=None, return_i
         import matplotlib_venn as mplv
     except ImportError:
         raise ImportError("To plot venn diagrams, install matplotlib-venn package: pip install matplotlib-venn")
-    
+
+    plt.gcf().clear()
+
+
     if labels is None:
         labels = ["A", "B", "C"]
         
@@ -985,7 +988,7 @@ def sitespeptidesproteins(df, labels=None, colors=None, site_localization_probab
     
 
 
-def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=False, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None):
+def rankintensity(df, colors=None, labels_from='Protein names', number_of_annotations=3, show_go_enrichment=False, go_ids_from=None, go_enrichment='function', go_max_labels=8, go_fdr=None, progress_callback=None):
     """
     Rank intensity plot, showing intensity order vs. raw intensity value S curve.
 
@@ -1015,7 +1018,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
         ids = df[go_ids_from]
     else:
         if 'Proteins' in df.columns.values:
-            ids = df['Protein']
+            ids = df['Proteins']
         elif 'Protein IDs' in df.columns.values:
             ids = df['Protein IDs']
         else:
@@ -1124,6 +1127,9 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
             colors = [mpl.colors.rgb2hex(cmap(n)) for n in range(len(segments))]
 
         for n, (s, e) in enumerate(segments):
+            if progress_callback:
+                progress_callback(float(n)/len(segments))
+
             mask = (y > s) & (y < e)
             c = x[mask]
 
@@ -1184,7 +1190,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     return ax
     
     
-def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
+def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, row_labels=True, col_labels=True, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
     """
     Hierarchical clustering of samples or proteins
 
@@ -1325,17 +1331,26 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
                            , norm=my_norm, cmap=cmap)
     clean_axis(heatmapAX)
 
+
+    def build_labels(index, ixs):
+        zstr = zip(*[index.get_level_values(x) for x in ixs])
+        return np.array([" ".join([str(t) for t in i]) if type(i) == tuple else str(i) for i in zstr])
+
     # row labels
     if dfc.shape[0] <= 100:
         heatmapAX.set_yticks(range(dfc.shape[0]))
         heatmapAX.yaxis.set_ticks_position('right')
-        ylabels = [" ".join([str(t) for t in i]) if type(i) == tuple else str(i) for i in dfc.index[row_denD['leaves']]]
+        if row_labels is True:
+            row_labels = list(range(len(dfc.index.names)))
+        ylabels = build_labels(dfc.index, row_labels)[row_denD['leaves']]
         heatmapAX.set_yticklabels(ylabels)
 
     # col labels
     if dfc.shape[1] <= 100:
         heatmapAX.set_xticks(range(dfc.shape[1]))
-        xlabels = [" ".join([str(t) for t in i]) if type(i) == tuple else str(i) for i in dfc.columns[col_denD['leaves']]]
+        if col_labels is True:
+            col_labels = list(range(len(dfc.columns.names)))
+        xlabels = build_labels(dfc.columns, col_labels)[col_denD['leaves']]
         xlabelsL = heatmapAX.set_xticklabels(xlabels)
         # rotate labels 90 degrees
         for label in xlabelsL:
@@ -1359,7 +1374,7 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
         for edge in edges:
             heatmapAX.axhline(edge +0.5, color='k', lw=3)
 
-
+    print(np.min(dfc.values), np.max(dfc.values))
     if return_clusters:
 
         return fig, dfc.iloc[row_denD['leaves'], col_denD['leaves']], edges
@@ -1389,8 +1404,7 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
     data = analysis.correlation(df).values
 
     # Plot the distributions
-    fig = plt.figure()
-    fig.set_size_inches(10, 10)
+    fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(1,1,1)
 
     if vmin is None:
@@ -1414,21 +1428,23 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
     fig.axes[0].grid('off')
 
     if show_scatter:
-        figo = mpl.figure.Figure(figsize=(n_dims, n_dims))
+        figo = mpl.figure.Figure(figsize=(n_dims, n_dims), dpi=300)
         # Create a dummy Agg canvas so we don't have to display/output this intermediate
         canvas = FigureCanvasAgg(figo)
 
-        for x in range(n_dims):
+        for x in range(0, n_dims):
             for y in range(x, n_dims):
 
                 ax = figo.add_subplot(n_dims, n_dims, y*n_dims+x+1)
 
-                xd = df.values[:, x]
-                yd = df.values[:, y]
+                if x != y:
+                    xd = df.values[:, x]
+                    yd = df.values[:, y]
+                    ax.scatter(xd, yd, lw=0, s=5, c='k', alpha=0.2)
 
-                ax.scatter(xd, yd, lw=0, s=5, c='k', alpha=0.2)
                 ax.grid('off')
                 ax.axis('off')
+
 
         figo.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
         raw = BytesIO()
@@ -1632,3 +1648,60 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
         image = image.crop((1, 1, width-1, height-1)) # Crop black outline
 
         return image
+
+
+def _barrightlabel(ax, name):
+    """
+
+    :param ax:
+    :param name:
+    :param mx:
+    :param offset:
+    :return:
+    """
+
+    # attach some text labels
+    for ii, rect in enumerate(ax.containers[0].patches):
+        width = rect.get_width()
+        ax.text(width * 1.1, rect.get_y()+rect.get_height()/2., "{:,}".format(name[ii]),
+                ha='left', va='center', fontsize=12, color='k')
+
+
+def quality_control(df):
+
+    labels = []
+    values = []
+
+    dfc = df.copy()
+
+    labels_f = []
+    values_f = []
+    for k in ['Reverse','Potential contaminant','Contaminant','Only identified by site']:
+        if k in df.columns:
+            values_f.append( df[ df[k].astype(str) == "+" ].shape[0] )
+            labels_f.append(k)
+            dfc = dfc[ dfc[k].astype(str) != "+" ]
+
+    dfc = dfc.filter(regex='(Intensity|Ratio).*')
+    dfc[ dfc == 0 ] = np.nan
+    dfq = dfc.dropna(how='all', axis=0)
+
+    values.append(dfq.shape[0])
+    labels.append("Quantified")
+
+    values.append(dfc.shape[0])
+    labels.append("Filtered")
+
+    values.extend(values_f)
+    labels.extend(labels_f)
+
+    labels.append("Total")
+    values.append(df.shape[0])
+
+
+    dfs = pd.DataFrame(values, index=labels)
+    ax = dfs.plot(kind='barh', legend=None, logx=True)
+
+    _barrightlabel(ax, dfs.values.flatten() )
+
+    return ax

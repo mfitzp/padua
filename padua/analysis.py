@@ -292,7 +292,7 @@ def sitespeptidesproteins(df, site_localization_probability=0.75):
 
     - `sites` (>0.75; or specified site localization probability) count of all sites > threshold
     - `peptides` the set of `Sequence windows` in the dataset (unique peptides)
-    - `proteins` the set of unique leading peptides in the dataset
+    - `proteins` the set of unique leading proteins in the dataset
 
     :param df: Pandas ``DataFrame`` of processed data
     :param site_localization_probability: ``float`` site localization probability threshold (for sites calculation)

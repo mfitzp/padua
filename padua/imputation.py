@@ -3,7 +3,12 @@ Algorithms for imputing missing values in data
 """
 
 import numpy as np
-from sklearn.cross_decomposition import PLSRegression
+try:
+    import sklearn
+except ImportError:
+    sklearn = False
+else:
+    from sklearn.cross_decomposition import PLSRegression
 
 
 def gaussian(df, width=0.3, downshift=-1.8, prefix=None):
@@ -66,6 +71,10 @@ def pls(df):
     :param df:
     :return:
     """
+
+    if not sklearn:
+        assert('This library depends on scikit-learn (sklearn) to perform PLS-based imputation')
+
     df = df.copy()
     df[np.isinf(df)] = np.nan
 
