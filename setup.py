@@ -25,6 +25,7 @@ setup(
         'numpy',
         'scipy',
         'matplotlib',
+        'cycler',
         'pandas',
         'statsmodels',
         'matplotlib-venn',

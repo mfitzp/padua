@@ -25,6 +25,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
                    hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx
 
+from . import styles
+
 class PlotManager(object):
     """
     Plot interface for analysis models. To generate plots, use Pandas-like syntax:
@@ -191,7 +193,7 @@ class MultivariateSklearnModel(SklearnModel):
 
 
 
-    def _plot_scores(self, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersize=30, label_scores=None, show_covariance_ellipse=True, **kwargs):
+    def _plot_scores(self, pc1=0, pc2=1, style=None, label_scores=None, show_covariance_ellipse=True, **kwargs):
         """
         Plot a scores plot for two principal components as AxB scatter plot.
 
@@ -200,10 +202,7 @@ class MultivariateSklearnModel(SklearnModel):
         :param scores: DataFrame containing scores
         :param pc1: Column indexer into scores for PC1
         :param pc2: Column indexer into scores for PC2
-        :param fcol: Face (fill) color definition
-        :param ecol: Edge color definition
-        :param marker: Marker style (matplotlib; default 'o')
-        :param markersize: int Size of the marker
+        :param style: Style object or name
         :param label_scores: Index level to label markers with
         :param show_covariance_ellipse: Plot covariance (2*std) ellipse around each grouping
         :param kwargs:
@@ -215,26 +214,15 @@ class MultivariateSklearnModel(SklearnModel):
         levels = [0,1]
         pc_n = self.scores.shape[0]
 
+        # Convert to style object, or get default style
+        style = styles.get(style)
+
         for c in set(self.scores.columns.get_level_values('Group')):
 
             data = self.scores[c].values.reshape(pc_n, -1)
 
-            fc = hierarchical_match(fcol, c, 'k')
-            ec = hierarchical_match(ecol, c)
-
-            if ec is None:
-                ec = fc
-
-            if type(markersize) == str:
-                # Use as a key vs. index value in this levels
-                idx = self.scores.columns.names.index(markersize)
-                s = c[idx]
-            elif callable(markersize):
-                s = markersize(c)
-            else:
-                s = markersize
-
-            ax.scatter(data[pc1,:], data[pc2,:], s=s, marker=marker, edgecolors=ec, c=fc)
+            fc, ec, marker, markersize = style.get_values(c, ['fc','ec','marker','markersize'])
+            ax.scatter(data[pc1,:], data[pc2,:], s=markersize, marker=marker, edgecolors=ec, c=fc)
 
             if show_covariance_ellipse and data.shape[1] > 2:
                 cov = data[[pc1, pc2], :].T
@@ -303,7 +291,7 @@ class MultivariateSklearnModel(SklearnModel):
         fig.tight_layout()
         return ax
 
-    def plot_scores(self, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersize=40, label_scores=None, show_covariance_ellipse=True, *args, **kwargs):
+    def plot_scores(self, pc1=0, pc2=1, style=None, label_scores=None, show_covariance_ellipse=True, *args, **kwargs):
         """
         Plot Scores
         :param fcol:
@@ -317,7 +305,7 @@ class MultivariateSklearnModel(SklearnModel):
         :return:
         """
         # FIXME: Generate scores x/y plot? or provide list of matches
-        scores_ax = self._plot_scores(pc1=pc1, pc2=pc2,fcol=fcol, ecol=ecol, marker=marker, markersize=markersize, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
+        scores_ax = self._plot_scores(pc1=pc1, pc2=pc2, style=None, label_scores=label_scores, show_covariance_ellipse=show_covariance_ellipse)
         return scores_ax.figure
 
     def plot_weights(self, threshold=None, label_threshold=None, label_weights=None, *args, **kwargs):

@@ -32,7 +32,7 @@ from . import analysis
 from . import process
 from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
                    hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx
-
+from . import styles
 
 import requests
 from requests_toolbelt import MultipartEncoder
