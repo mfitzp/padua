@@ -11,7 +11,7 @@ for a given class/mapping have already been decided.
 
 """
 
-from cycler import cycler
+from cycler import cycler as cy
 from collections import defaultdict, Iterable
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import matplotlib.pyplot as plt
@@ -62,6 +62,7 @@ _scatter_filter = {'fc':'facecolors', 'ec':'edgecolors', 'marker':'marker', 'mar
 _patch_filter = {'fc':'fc', 'ec':'ec', 'hatch':'hatch'}
 _line_filter = {'fc':'c', 'lw':'lw'}
 
+_color_attrs = ['fc','ec','c','facecolors','edgecolors']
 
 def filter_dict(d, f):
     return {f[k]:v for k,v in d.items() if k in f}
@@ -93,10 +94,12 @@ def base64mplfigure(fig):
 class Style(object):
 
     cycler = None
+    _cycler = None
     _dict = None
 
     def __repr__(self):
         return "<Style '%s'> %s" % ( self.name, list( zip(self._dict.keys(), self._dict.values()) ) )
+
     def _repr_html_(self):
 
         html = []
@@ -104,7 +107,7 @@ class Style(object):
         #if self.description:
             #html.append('<tr><td colspan="100">%s</td></tr>' % self.description )
 
-        n_styles = len(self._cycler)
+        n_styles = len(self.cycler)
 
         fig = plt.Figure(figsize=(n_styles,2))
         fig.set_canvas(plt.gcf().canvas)
@@ -118,7 +121,7 @@ class Style(object):
         wobble = [0.1,0.25]
 
         # Build example map of all available styles defined on this cycler
-        for n, s in enumerate(iter( self._cycler )):
+        for n, s in enumerate(iter( self.cycler )):
             s = apply_defaults(s)
 
             ax.add_patch(patches.Rectangle((n/n_styles, 0.5), 1/n_styles, 1,  **filter_dict(s, _patch_filter)))
@@ -145,7 +148,7 @@ class Style(object):
                 htmla = []
                 for ak in all_keys:
                     if ak in v:
-                        if v[ak].startswith('#'): #FIXME: attribute lookup
+                        if ak in _color_attrs:
                             htmla.append('<td style="background-color:%s">&nbsp;</td>' % v[ak])
 
                         else:
@@ -156,25 +159,22 @@ class Style(object):
 
                 html.append('<tr><td>%s</td>%s</tr>' % (k, ''.join(htmla)))
 
-        print(all_keys)
-
-
         return '<table>' + ''.join(html) + '</table>'
 
-        #return '<img src="%s">' % base64mplfigure(fig)
 
-
-    def __init__(self, name='unnamed', description=None, levels=1, **kwargs):
+    def __init__(self, name='unnamed', description=None, levels=1, cycler=None, **kwargs):
 
         self.name = name
         self.description = description
         self._levels = levels
 
-        if 'fc' in kwargs and 'ec' not in kwargs:
-            kwargs['ec'] = kwargs['fc']
+        if cycler is None:
+            if 'fc' in kwargs and 'ec' not in kwargs:
+                kwargs['ec'] = kwargs['fc']
 
-        self._cycler = cycler(**{k:v for k,v in kwargs.items() if v is not None})
-        self.reset()
+            cycler = cy(**{k:v for k,v in kwargs.items() if v is not None})
+
+        self.set_cycler(cycler)
 
 
     def get(self, k):
@@ -218,8 +218,8 @@ class Style(object):
 
     def reset(self, initial=None):
         # Define persistent (looping) cycler as per http://matplotlib.org/cycler/#persistent-cycles
-        self.cycler = iter( self._cycler() )
-        self._dict = defaultdict(lambda: next(self.cycler))
+        self._cycler = iter( self.cycler() )
+        self._dict = defaultdict(lambda: next(self._cycler))
 
         if initial:
             """
@@ -227,6 +227,10 @@ class Style(object):
             """
             for k in initial:
                 _ = self._dict[k]
+
+    def set_cycler(self, cycler):
+        self.cycler = cycler
+        self.reset()
 
 
 

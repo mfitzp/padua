@@ -1,9 +1,9 @@
 import numpy as np
 import scipy as sp
 import scipy.interpolate
+from copy import copy, deepcopy
 
-
-def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
+def qvalues(po, m = None, verbose = False, lowmem = False, pi0 = None):
     """
     Copyright (c) 2012, Nicolo Fusi, University of Sheffield
     All rights reserved.
@@ -27,11 +27,14 @@ def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
     :param pi0:
     :return:
     """
+    # Make a shallow copy, filtering NaN
+    po = copy(po)
+    pv = po[~np.isnan(po)]
 
     assert(pv.min() >= 0 and pv.max() <= 1), "p-values should be between 0 and 1"
 
     original_shape = pv.shape
-    pv = pv.ravel() # flattens the array in place, more efficient than flatten() 
+    pv = pv.ravel() # flattens the array in place, more efficient than flatten()
 
     if m == None:
         m = float(len(pv))
@@ -84,7 +87,7 @@ def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
             prev_qv = qv[cur_max]
 
     else:
-        p_ordered = sp.argsort(pv)    
+        p_ordered = sp.argsort(pv)
         pv = pv[p_ordered]
         qv = pi0 * m/len(pv) * pv
         qv[-1] = min(qv[-1],1.0)
@@ -99,8 +102,10 @@ def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
 
         # reshape qvalues
         qv = qv.reshape(original_shape)
-        
-    return qv
+
+    # Replace non-Nan values with the calculated qv and return
+    po[~np.isnan(po)] = qv
+    return po
 
 
 def get_protein_id(s):
