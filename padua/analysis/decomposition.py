@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-import collections
-import jinja2
+import scipy as sp
+import scipy.stats
 
 try:
     import sklearn
@@ -40,7 +40,7 @@ class DecompositionSklearnModel(SklearnModel):
     weights = None
 
 
-    def _plot_weights(self, pc, threshold=None, label_threshold=None, labels_from=None, **kwargs):
+    def _plot_weightsloadings(self, pc, threshold=None, label_threshold=None, labels_from=None, **kwargs):
         """
 
         :param weights:
@@ -83,7 +83,7 @@ class DecompositionSklearnModel(SklearnModel):
             ax.axhline(threshold, 0, 1)
             ax.axhline(-threshold, 0, 1)
 
-        ax.set_ylabel("Weights on Principal Component %d" % (pc+1), fontsize=16)
+        ax.set_ylabel(wts.name, fontsize=16)
         fig.tight_layout()
         return ax
 
@@ -108,10 +108,9 @@ class DecompositionSklearnModel(SklearnModel):
         #FIXME: This should generate a compound figure?
         weights_ax = []
         for pc in range(0, self.weights.shape[1]):
-            weights_ax.append( self._plot_weights(pc, threshold=threshold, label_threshold=label_threshold, labels_from=labels_from) )
+            weights_ax.append( self._plot_weightsloadings(pc, threshold=threshold, label_threshold=label_threshold, labels_from=labels_from) )
 
         return weights_ax
-
 
 
 class PCA(DecompositionSklearnModel):
@@ -148,10 +147,12 @@ class PCA(DecompositionSklearnModel):
 
     name = "Principal Component Analysis (PCA)"
     shortname = "PCA"
+
     help_url = "http://padua.readthedocs.io/en/latest/analysis.html#padua.analysis.pca"
+    demo_url = "http://padua.readthedocs.io/en/latest/analysis.html#padua.analysis.pca"
 
     attributes = ['scores','weights','model','data']
-    available_plots = ['scores','weights','loadings','3dscores']
+    available_plots = ['scores','weights','3dscores']
     default_plots = ['scores','weights']
 
     def __init__(self, df, n_components=2, mean_center=False, *args, **kwargs):
@@ -188,11 +189,21 @@ class PCA(DecompositionSklearnModel):
             ('Number of components', n_components),
             ('Number of samples', df.shape[1]),
             ('Mean centered?', mean_center),
-            ('Dimensions (features x samples)', ' x '.join(str(d) for d in self.data.shape) if self.data is not None else (None, None)),
+            ('Dimensions (features x samples)', 'x'.join(str(d) for d in self.data.shape) if self.data is not None else (None, None)),
         ])
 
+class PLSSklearnModel(DecompositionSklearnModel):
+    def plot_loadings(self, threshold=None, label_threshold=None, labels_from=None, *args, **kwargs):
+        #FIXME: Should this generate a compound multi-axis figure?
+        weights_ax = []
+        for pc in range(0, self.loadings.shape[1]):
+            weights_ax.append( self._plot_weightsloadings(pc, threshold=threshold, label_threshold=label_threshold, labels_from=labels_from) )
 
-class PLSDA(DecompositionSklearnModel):
+        return weights_ax
+
+
+
+class PLSDA(PLSSklearnModel):
     """
     Partial Least Squares Discriminant Analysis, based on `sklearn.cross_decomposition.PLSRegression`
 
@@ -275,8 +286,118 @@ class PLSDA(DecompositionSklearnModel):
         # Store the parameters of the analysis
         self.parameters.extend([
             ('Comparison', " x ".join(str(g) for g in self.groups) if self.groups else (None, None)),
-            ('Number of samples', " x ".join(str(df[g].shape[1]) for g in self.groups) if self.groups else (None, None)),
+            ('Number of samples', "x".join(str(df[g].shape[1]) for g in self.groups) if self.groups else (None, None)),
             ('Number of components', n_components),
             ('Mean centered?', mean_center),
-            ('Dimensions (features x samples)', ' x '.join(str(d) for d in self.data.shape) if self.data is not None else (None, None)),
+            ('Dimensions (features x samples)', 'x'.join(str(d) for d in self.data.shape) if self.data is not None else (None, None)),
         ])
+
+
+
+class PLSR(PLSSklearnModel):
+    """
+    Partial Least Squares Regression Analysis, based on `sklearn.cross_decomposition.PLSRegression`
+
+    Performs a partial least squares regression (PLS-R) on the supplied dataframe ``df``
+    against the provided continuous variable ``v``, selecting the first ``n_components``.
+
+    For more information on PLS regression and the algorithm used, see the `scikit-learn documentation <http://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.PLSRegression.html>`_.
+
+    :param df: Pandas ``DataFrame`` to perform the analysis on
+    :param v: Continuous variable to perform regression against
+    :param n_components: ``int`` number of components to select
+    :param mean_center: ``bool`` mean center the data before performing PLS regression
+    :param kwargs: additional keyword arguments to `sklearn.cross_decomposition.PLSRegression`
+    :return: scores ``DataFrame`` of PLS-R scores n_components x n_samples
+             weights ``DataFrame`` of PLS-R weights n_variables x n_components
+    """
+
+    name = "Partial Least Squares Discriminant Analysis (PLS-DA)"
+    shortname = "PLS-DA"
+
+    loadings = None
+
+    attributes = ['scores','weights','loadings','predicted','model','data', 'slope', 'intercept', 'r', 'p', 'se']
+    available_plots = ['regression','scores','weights','loadings','3dscores']
+    default_plots = ['regression','scores','weights']
+
+    def __init__(self, df, y, n_components=2, mean_center=False, scale=True, **kwargs):
+        super(PLSR, self).__init__(**kwargs)
+
+
+        if not sklearn:
+            assert('This library depends on scikit-learn (sklearn) to perform PLS-DA')
+
+        from sklearn.cross_decomposition import PLSRegression
+
+        df = df.copy()
+
+        # We have to zero fill, nan errors in PLSRegression
+        df[ np.isnan(df) ] = 0
+
+        if mean_center:
+            mean = np.mean(df.values, axis=0)
+            df = df - mean
+
+        #TODO: Extract values if v is DataFrame?
+
+        plsr = PLSRegression(n_components=n_components, scale=scale, **kwargs)
+        plsr.fit(df.values.T, y)
+
+        self.scores = pd.DataFrame(plsr.x_scores_.T)
+        self.scores.index = ['Latent Variable %d' % (n+1) for n in range(0, self.scores.shape[0])]
+        self.scores.columns = df.columns
+
+        self.weights = pd.DataFrame(plsr.x_weights_)
+        self.weights.index = df.index
+        self.weights.columns = ['Weights on Latent Variable %d' % (n+1) for n in range(0, self.weights.shape[1])]
+
+        self.loadings = pd.DataFrame(plsr.x_loadings_)
+        self.loadings.index = df.index
+        self.loadings.columns = ['Loadings on Latent Variable %d' % (n+1) for n in range(0, self.loadings.shape[1])]
+
+        predicted = plsr.predict(df.values.T).T
+        self.predicted = pd.DataFrame(predicted, index=["Predicted"], columns=df.columns)
+
+        self.model = plsr
+        self.data = df
+        self.y = y
+
+        slope, intercept, r, p, se = sp.stats.linregress(y, predicted.flatten())
+
+        self.slope = slope
+        self.intercept = intercept
+        self.r = r
+        self.p = p
+        self.se = se
+
+
+        # Store the parameters of the analysis
+        self.parameters.extend([
+            ('Number of components', n_components),
+            ('Mean centered?', mean_center),
+            ('Dimensions (features x samples)', 'x'.join(str(d) for d in self.data.shape) if self.data is not None else (None, None)),
+        ])
+
+    def plot_regression(self):
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(1,1,1)
+
+        # Add regression line
+        xmin, xmax = np.min(self.y), np.max(self.y)
+        ax.plot([xmin, xmax],[xmin*self.slope+self.intercept, xmax*self.slope+self.intercept], lw=1, c='k')
+
+        ax.scatter(self.y, self.predicted.values.flatten(), s=50, alpha=0.5)
+        ax.set_xlabel("Actual values")
+        ax.set_ylabel("Predicted values")
+
+        ax.set_aspect(1./ax.get_data_ratio())
+
+        ax.text(0.05, 0.95, '$y = %.2f+%.2fx$' % (self.intercept, self.slope), horizontalalignment='left', transform=ax.transAxes, color='black', fontsize=14)
+
+        ax.text(0.95, 0.15, '$r^2$ = %.2f' % (self.r**2), horizontalalignment='right', transform=ax.transAxes, color='black', fontsize=14)
+        ax.text(0.95, 0.10, '$p$ = %.2f' % self.p, horizontalalignment='right', transform=ax.transAxes, color='black', fontsize=14)
+        ax.text(0.95, 0.05, '$SE$ = %.2f' % self.se, horizontalalignment='right', transform=ax.transAxes, color='black', fontsize=14)
+
+        return fig
+

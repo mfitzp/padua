@@ -2,12 +2,13 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 from scipy import stats
-
 import warnings
 
 from . import Analysis
 
 from ..utils import qvalues, calculate_s0_curve
+from .. import styles
+from ..plots import _areahist
 
 import matplotlib
 import matplotlib as mpl
@@ -81,14 +82,16 @@ class TtestBase(Analysis):
                 warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
 
             if is_log2:
-                dr = a - b
+                dr = b - a
             else:
                 dr = np.log2(b / a)
 
         p = self.result[yp].values
 
-        # There are values below the fdr
-        s0x, s0y, s0fn = calculate_s0_curve(s0, fdr, min(fdr/2, np.nanmin(p)), np.log2(threshold), np.nanmax(np.abs(dr)), curve_interval=0.001)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            # There are values below the fdr
+            s0x, s0y, s0fn = calculate_s0_curve(s0, fdr, min(fdr/2, np.nanmin(p)), np.log2(threshold), np.nanmax(np.abs(dr)), curve_interval=0.001)
 
         if draw_fdr is True:
             ax.plot(s0x, -np.log10(s0y), fc_sigr, lw=1 )
@@ -135,8 +138,8 @@ class TtestBase(Analysis):
         scatter(ax, _FILTER_OUT2, fc_sig, alpha=0.3)
 
         if labels_for:
-            idxs = get_index_list( df.index.names, labels_from )
-            for shown, label, x, y in zip( _FILTER_IN , df.index.values, dr, -np.log10(p)):
+            idxs = get_index_list( self.data.index.names, labels_from )
+            for shown, label, x, y in zip( _FILTER_IN , self.data.index.values, dr, -np.log10(p)):
 
                 if shown or not label_sig_only:
                     label = build_combined_label( label, idxs, label_format=label_format)
@@ -181,10 +184,10 @@ class TtestBase(Analysis):
         return ax
 
 
-    def filter_by_p(self, p):
+    def filter_by_p(self, p=0.05):
         return self.data.iloc[ self.p >= p, :]
 
-    def filter_by_q(self, q):
+    def filter_by_q(self, q=0.05):
         return self.data.iloc[ self.q >= q, :]
 
     def _store_result(self, df, t, p, q):
@@ -313,3 +316,91 @@ class TtestRelated(TtestBase):
         ])
 
 
+class Describe(Analysis):
+
+    name = "Descriptive statistics"
+    shortname = "describe"
+
+    attribute_labels = {
+        'n_obs':"Number of observations",
+        'min':"Minimum",
+        'max':"Maximum",
+        'skewness':"Skewness",
+        'kurtosis':"Fisher Kurtosis",
+        'mean':"Mean x̅ ",
+        'median':"Median",
+        'variance':"Variance s",
+        'stddev':"Standard deviation σ, √s",
+        'sem':"Standard error of the mean SE",
+        'iqr':"Interquartile range IQR"
+    }
+    attributes = ['n_obs','min','max', 'mean','median', 'variance','stddev','skewness','kurtosis','sem','iqr']
+    available_plots = ['histogram']
+    default_plots = ['histogram']
+
+    def __init__(self, df, nan_policy='omit', *args, **kwargs):
+        super(Describe, self).__init__(**kwargs)
+
+        df = df.copy()
+        self.data = df
+
+        d = sp.stats.describe(df.values.flatten(), nan_policy=nan_policy)
+        nobs, minmax, self.mean, self.variance, skewness, self.kurtosis = d
+
+        self.n_obs = int(nobs)
+        self.skewness = float(skewness)
+        self.min, self.max = float(minmax[0]), float(minmax[1])
+        self.sem = sp.stats.sem(df.values.flatten(), nan_policy=nan_policy)
+
+        try: # Not available < scipy 0.18
+            from scipy.stats import iqr
+            self.iqr = sp.stats.iqr(df.values.flatten(), nan_policy=nan_policy)
+        except ImportError:
+            self.iqr = None
+
+        self.stddev = self.variance ** 0.5
+        self.median = np.nanmedian(df.values.flatten())
+
+        self.parameters.extend([
+            ('Dimensions (features x samples)', 'x'.join(str(d) for d in self.data.shape) if self.data is not None else (None, None)),
+            ('NaN policy', nan_policy),
+        ])
+
+
+
+    def plot_histogram(self, style=None):
+
+        # Convert to style object, or get default style
+        style = styles.get(style)
+
+        fig = plt.figure(figsize=(10,10))
+        ax = fig.add_subplot(1,1,1)
+
+        bins = 100
+
+        v = self.data.values.flatten()
+        y, x = np.histogram(v[~np.isnan(v)], bins)
+        x = x[:-1]
+
+        ax.plot(x, y, c='k', ls='-', lw=2)
+
+        for g in set(self.data.columns.get_level_values(0)):
+            fc, = style.get_values(g, ['fc'])
+            _areahist(ax, self.data[g].values.flatten(), c=fc, alpha=0.5)
+
+        ax.set_title('Global and Groupwise distributions')
+
+        ax.axvline(self.mean, c='r')
+        ax.axvline(self.median, c='r', ls='--')
+
+        ax.axvline(self.mean + (self.stddev), c='b', ls=':')
+        ax.axvline(self.mean + (self.stddev*2), c='b', ls=':')
+
+        ax.axvline(self.mean - (self.stddev), c='b', ls=':')
+        ax.axvline(self.mean - (self.stddev*2), c='b', ls=':')
+
+        xlim = ax.get_xlim()
+        xlim = np.max(np.abs(xlim))
+        ax.set_xlim((-xlim, xlim))
+
+        return fig

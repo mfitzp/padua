@@ -122,3 +122,17 @@ def scatter(df, a=0, b=1, style=None, labels_from=None, show_covariance_ellipse=
     ax.set_ylabel(df.index[b], fontsize=16)
     fig.tight_layout()
     return ax
+
+
+def _areahist(ax, v, c, bins=100, by=None, alpha=1):
+    """
+    Plot the histogram distribution but as an area plot
+    """
+    y, x = np.histogram(v[~np.isnan(v)], bins)
+    x = x[:-1]
+
+    if by is None:
+        by = np.zeros( (bins, ) )
+
+    ax.fill_between(x, y, by, facecolor=c, alpha=alpha)
+
