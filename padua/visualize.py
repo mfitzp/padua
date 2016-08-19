@@ -423,7 +423,7 @@ def modificationlocalization(df):
 
     return ax
     
-    
+
 def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None, fcol=None, ecol=None, hatch=None, ylabel="", xlabel=""):
     """
     Generate a box plot from pandas DataFrame with sample grouping.
@@ -461,15 +461,15 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
     # Build the combined name/info string using label_from; replace the index
     title_idxs = get_index_list( df.index.names, title_from )
     df.index = [build_combined_label(r, title_idxs) for r in df.index.values]
-    
+
     if s:
         # Filter the table on the match string (s)
         df = df.iloc[ [all([str(si).lower() in l.lower() for si in s]) for l in df.index.values] ]
-    
+
     figures = []
     # Iterate each matching row, building the correct structure dataframe
     for ix in range(df.shape[0]):
-        
+
         dfi = pd.DataFrame(df.iloc[ix]).T
         label = dfi.index.values[0]
         dfi = process.fold_columns_to_rows(dfi, levels_from=len(df.columns.names)-1)
@@ -483,7 +483,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
         else:
             # Subplots
             subplotl = [None]
-            gs =  gridspec.GridSpec(1, 1) 
+            gs =  gridspec.GridSpec(1, 1)
 
 
         first_ax = None
@@ -505,7 +505,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
                 medians = medians[ groups ]
 
             ax, dic = medians.plot(
-                kind='box', 
+                kind='box',
                 return_type = 'both',
                 patch_artist=True,
                 ax = ax,
@@ -516,12 +516,12 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
                 if sp is None:
                     hier = []
                 else:
-                    hier = [sp]  
+                    hier = [sp]
                 if type(c) == tuple:
                     hier.extend(c)
                 else:
                     hier.append(c)
-                    
+
                 if fcol:
                     color = hierarchical_match(fcol, hier, None)
                     if color:
@@ -546,9 +546,9 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
         fig.subplots_adjust(wspace=0.05)
 
         fig.suptitle(label)
-        
+
         figures.append(fig)
-        
+
     return figures
 
     
