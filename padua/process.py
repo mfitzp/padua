@@ -315,7 +315,7 @@ def transform_expression_columns(df, fn=np.log2, prefix='Intensity '):
     """
     df = df.copy()
 
-    mask = np.array([l.startswith('Ratio ') for l in df.columns.values])
+    mask = np.array([l.startswith(prefix) for l in df.columns.values])
     df.iloc[:, mask] = fn(df.iloc[:, mask])
     
     

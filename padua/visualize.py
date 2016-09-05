@@ -34,6 +34,8 @@ from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list
                    hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx
 
 
+from PIL import Image
+
 import requests
 from requests_toolbelt import MultipartEncoder
 
@@ -1594,7 +1596,7 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
 
     node_colors = {}
     for p, v in zip(df.index.get_level_values(ids_from), dr):
-        pid = p.split(";")[-1]
+        pid = str(p).split(";")[-1]
 
         if "_" in pid:
             pid = pid[:pid.index("_")]
