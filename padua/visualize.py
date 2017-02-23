@@ -751,7 +751,7 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
 
     if title_from is None:
         title_from = list(df.index.names)
-
+        
     # Build the combined name/info string using label_from; replace the index
     title_idxs = get_index_list( df.index.names, title_from )
     df.index = [build_combined_label(r, title_idxs) for r in df.index.values]
@@ -792,10 +792,12 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
                 dfp = dfi[sp]
 
             ax = fig.add_subplot(gs[n], sharey=first_ax)
+            
+            #print(dfp.median(axis=1, level=0).reset_index())
 
-            medians = dfp.median(axis=1, level=0).reset_index().set_index('Replicate') #.dropna(axis=1)
+            medians = dfp.median(axis=1, level=0).reset_index()#.set_index('Replicate') #.dropna(axis=1)
 
-            if groups and all([g in medians.columns.get_level_values(0)]):
+            if groups and all([g in medians.columns.get_level_values(0) for g in groups]):
                 medians = medians[ groups ]
 
             ax, dic = medians.plot(
