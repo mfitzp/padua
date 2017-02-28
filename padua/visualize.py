@@ -752,6 +752,9 @@ def box(df, s=None, title_from=None, subplots=False, figsize=(18,6), groups=None
     if title_from is None:
         title_from = list(df.index.names)
         
+    if groups is None:
+        groups = list( set( df.columns.get_level_values(0) ) )
+        
     # Build the combined name/info string using label_from; replace the index
     title_idxs = get_index_list( df.index.names, title_from )
     df.index = [build_combined_label(r, title_idxs) for r in df.index.values]
