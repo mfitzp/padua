@@ -393,7 +393,7 @@ def anova_1way(df, *args, fdr=0.05):
     
     At least 2 groups must be provided.
     
-    :return: Dataframe containing selected groups and P value for the comparisons.
+    :return: Dataframe containing selected groups and P/T/sig value for the comparisons.
     
     """
     if len(args) < 2:

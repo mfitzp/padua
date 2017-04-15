@@ -1,5 +1,5 @@
 import numpy as np
-
+import pandas as pd
 
 def remove_columns_matching(df, column, match):
     """
@@ -163,6 +163,34 @@ def search(df, match, columns=['Proteins','Protein names','Gene names']):
     return df.iloc[mask]
     
     
+def filter_select_columns(df, columns):
+    """
+    Filter dataframe to include specified columns, retaining any Intensity columns.
+    """
+    return df.filter(regex='^(Intensity(.*)|%s)$' % ('|'.join(columns)) )
+    
+
+def filter_intensity_imac(df):
+    """
+    Filter out only the IMAC sample Intensity values, excluding other Intensity measurements
+    but retaining all other columns.
+    """
+    dft = df.filter(regex="^(?!Intensity).*$")
+    dfi = df.filter(regex='^Intensity.*IMAC.*__\d')
+
+    return pd.concat([dft,dfi], axis=1)
+
+def filter_intesntiy_ibaq(df):
+    """
+    Filter out only the IBAQ sample Intensity values, excluding other Intensity measurements
+    but retaining all other columns.
+    """
+    dft = df.filter(regex="^(?!Intensity).*$")
+    dfi = df.filter(regex='^Intensity.*IBAQ.*__\d')
+
+    return pd.concat([dft,dfi], axis=1)
+
+
     
     
 
