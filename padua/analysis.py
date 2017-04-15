@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import requests
+import scipy as sp
+from scipy import stats
 
 try:
     import sklearn
@@ -378,3 +380,57 @@ def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=Tr
         go = go[ go["P"] < fdr ]
 
     return go.sort_values(by="P", ascending=True)
+
+
+def anova_1way(df, *args, fdr=0.05):
+    """
+    Perform Analysis of Variation (ANOVA) on provided dataframe
+    and for specified groups. Groups for analysis can be specified
+    as individual arguments, e.g.
+    
+    anova(df, "Group A", "Group B")
+    anova(df, ("Group A", 5), ("Group B", 5))
+    
+    At least 2 groups must be provided.
+    
+    :return: Dataframe containing selected groups and P value for the comparisons.
+    
+    """
+    if len(args) < 2:
+        raise Exception("Not enough arguments. Provide at least two group/indexes for comparison.")
+    
+    # Select columns for test
+
+    df = df[list(args)]
+    
+    pv = []
+    tv = []
+    
+    for n in range(df.shape[0]):
+        
+        data = []    
+        
+        for idx in args:
+        
+            dv = df.iloc[n][idx].values
+            dv = np.ma.masked_where(np.isnan(dv), dv)
+        
+            data.append(dv)
+        
+        # Calculate the p value between two groups (t-test)
+        t, p = sp.stats.mstats.f_oneway(*data)
+        
+        pv.append(p)
+        tv.append(t)
+    
+    df['ANOVA p'] =  pv
+    df['ANOVA t'] =  tv
+    df['ANOVA sig'] =  np.array(pv) <= fdr
+
+    return df
+
+    
+    
+    
+    
+    
