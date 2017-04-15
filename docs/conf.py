@@ -78,7 +78,6 @@ MOCK_MODULES = [
     'matplotlib.pyplot',
     'dateutil',
     'pandas',
-    'requests',
     'pydot',
 ]
 
