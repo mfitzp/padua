@@ -162,34 +162,42 @@ def search(df, match, columns=['Proteins','Protein names','Gene names']):
 
     return df.iloc[mask]
     
+def filter_exclude(df, s):
+    """
+    Filter dataframe to exclude matching columns, based on search for "s"
+    
+    :param s: string to search for, exclude matching columns
+    """
+    keep = ~np.array( [s in c for c in df.columns.values] )
+    return df.iloc[:, keep]
+    
     
 def filter_select_columns(df, columns):
     """
     Filter dataframe to include specified columns, retaining any Intensity columns.
     """
-    return df.filter(regex='^(Intensity(.*)|%s)$' % ('|'.join(columns)) )
+    return df.filter(regex='^(LFQ Intensity.*|Intensity(.*)|%s)$' % ('|'.join(columns)) )
     
 
-def filter_intensity_imac(df):
+def filter_intensity(df, label=""):
     """
-    Filter out only the IMAC sample Intensity values, excluding other Intensity measurements
-    but retaining all other columns.
+    Filter to include only the Intensity values with optional specified label, excluding other 
+    Intensity measurements, but retaining all other columns.
     """
     dft = df.filter(regex="^(?!Intensity).*$")
-    dfi = df.filter(regex='^Intensity.*IMAC.*__\d')
+    dfi = df.filter(regex='^(.*Intensity.*%s.*__\d)$' % label)
 
     return pd.concat([dft,dfi], axis=1)
 
-def filter_intesntiy_ibaq(df):
+def filter_intensity_lfq(df, label=""):
     """
-    Filter out only the IBAQ sample Intensity values, excluding other Intensity measurements
-    but retaining all other columns.
+    Filter to include only the Intensity values with optional specified label, excluding other 
+    Intensity measurements, but retaining all other columns.
     """
-    dft = df.filter(regex="^(?!Intensity).*$")
-    dfi = df.filter(regex='^Intensity.*IBAQ.*__\d')
+    dft = df.filter(regex="^(?!LFQ Intensity).*$")
+    dfi = df.filter(regex='^(.*Intensity.*%s.*__\d)$' % label)
 
     return pd.concat([dft,dfi], axis=1)
-
 
     
     
