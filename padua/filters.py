@@ -170,35 +170,47 @@ def filter_exclude(df, s):
     """
     keep = ~np.array( [s in c for c in df.columns.values] )
     return df.iloc[:, keep]
-    
-    
+
 def filter_select_columns(df, columns):
     """
     Filter dataframe to include specified columns, retaining any Intensity columns.
     """
     return df.filter(regex='^(LFQ Intensity.*|Intensity(.*)|%s)$' % ('|'.join(columns)) )
-    
 
-def filter_intensity(df, label=""):
+def filter_intensity(df, label="", with_multiplicity=False):
     """
     Filter to include only the Intensity values with optional specified label, excluding other 
     Intensity measurements, but retaining all other columns.
     """
+    label += ".*__\d" if with_multiplicity else ""
+
     dft = df.filter(regex="^(?!Intensity).*$")
     dfi = df.filter(regex='^(.*Intensity.*%s.*__\d)$' % label)
 
     return pd.concat([dft,dfi], axis=1)
 
-def filter_intensity_lfq(df, label=""):
+def filter_intensity_lfq(df, label="", with_multiplicity=False):
     """
     Filter to include only the Intensity values with optional specified label, excluding other 
     Intensity measurements, but retaining all other columns.
     """
+    label += ".*__\d" if with_multiplicity else ""
+
     dft = df.filter(regex="^(?!LFQ Intensity).*$")
-    dfi = df.filter(regex='^(.*Intensity.*%s.*__\d)$' % label)
+    dfi = df.filter(regex='^(.*LFQ Intensity.*%s.*__\d)$' % label)
 
     return pd.concat([dft,dfi], axis=1)
 
-    
+def filter_ratio(df, label="", with_multiplicity=False):
+    """
+    Filter to include only the Ratio values with optional specified label, excluding other
+    Intensity measurements, but retaining all other columns.
+    """
+    label += ".*__\d" if with_multiplicity else ""
+
+    dft = df.filter(regex="^(?!Ratio).*$")
+    dfr = df.filter(regex='^(.*Ratio.*%s)$' % label)
+
+    return pd.concat([dft,dfr], axis=1)
     
 
