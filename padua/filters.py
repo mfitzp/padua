@@ -171,7 +171,13 @@ def filter_exclude(df, s):
     keep = ~np.array( [s in c for c in df.columns.values] )
     return df.iloc[:, keep]
 
-def filter_select_columns(df, columns):
+def filter_select_columns_ratio(df, columns):
+    """
+    Filter dataframe to include specified columns, retaining any Intensity columns.
+    """
+    return df.filter(regex='^(Ratio M/L normalized.*|Ratio H/L normalized.*|Ratio H/M normalized*|)$' % ('|'.join(columns)) )
+
+def filter_select_columns_ratio(df, columns):
     """
     Filter dataframe to include specified columns, retaining any Intensity columns.
     """
