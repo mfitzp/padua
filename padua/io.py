@@ -105,7 +105,7 @@ def write_phosphopath(df, f, extra_columns=None):
 
     proteins = [_protein_id(k) for k in df.index.get_level_values('Proteins')]
     amino_acids = df.index.get_level_values('Amino acid')
-    positions = [_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
+    positions = [_protein_id(k) for k in df.index.get_level_values('Positions')]
     multiplicity = [k[-1] for k in df.index.get_level_values('Multiplicity')]
 
     apos = ["%s%s" % x for x in zip(amino_acids, positions)]
