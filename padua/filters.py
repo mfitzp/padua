@@ -179,7 +179,7 @@ def filter_select_columns_intensity(df, columns):
 
 def filter_select_columns_ratio(df, columns):
     """
-    Filter dataframe to include specified columns, retaining any Intensity columns.
+    Filter dataframe to include specified columns, retaining Ratio columns.
     """
     return df.filter(regex='^(Ratio M/L normalized.*|Ratio H/L normalized.*|Ratio H/M normalized.*|)$' % ('|'.join(columns)) )
 
