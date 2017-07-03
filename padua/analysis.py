@@ -42,7 +42,8 @@ def correlation(df, rowvar=False):
     cdf = pd.DataFrame(np.array(cdf))
     cdf.columns = df.columns
     cdf.index = df.columns
-
+    cdf = cdf.sort_index(level=0, axis=1)
+    cdf = cdf.sort_index(level=0)
     return cdf
     
     
