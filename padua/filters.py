@@ -218,5 +218,3 @@ def filter_ratio(df, label="", with_multiplicity=False):
     dfr = df.filter(regex='^(.*Ratio.*%s)$' % label)
 
     return pd.concat([dft,dfr], axis=1)
-    
-
