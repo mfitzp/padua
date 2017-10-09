@@ -321,7 +321,8 @@ def transform_expression_columns(df, fn=np.log2, prefix='Intensity '):
 
     mask = np.array([l.startswith(prefix) for l in df.columns.values])
     df.iloc[:, mask] = fn(df.iloc[:, mask])
-    
+
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
     
     return df
 
