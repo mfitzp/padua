@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def remove_columns_matching(df, column, match):
+def remove_rows_matching(df, column, match):
     """
     Return a ``DataFrame`` with rows where `column` values match `match` are removed.
 
@@ -18,7 +18,7 @@ def remove_columns_matching(df, column, match):
     return df.iloc[mask, :]
 
 
-def remove_columns_containing(df, column, match):
+def remove_rows_containing(df, column, match):
     """
     Return a ``DataFrame`` with rows where `column` values containing `match` are removed.
 
@@ -34,7 +34,6 @@ def remove_columns_containing(df, column, match):
     mask = [match not in str(v) for v in df[column].values]
     return df.iloc[mask, :]
 
-
 def remove_reverse(df):
     """
     Remove rows with a + in the 'Reverse' column.
@@ -45,7 +44,7 @@ def remove_reverse(df):
     :param df: Pandas ``DataFrame``
     :return: filtered Pandas ``DataFrame``
     """
-    return remove_columns_containing(df, 'Reverse', '+')
+    return remove_rows_containing(df, 'Reverse', '+')
 
 def remove_contaminants(df):
     """
@@ -57,19 +56,9 @@ def remove_contaminants(df):
     :param df: Pandas ``DataFrame``
     :return: filtered Pandas ``DataFrame``
     """
-    return remove_columns_containing(df, 'Contaminant', '+')
+    colname = (df.columns & ['Contaminant','Potential contaminant'])[0]
 
-def remove_potential_contaminants(df):
-    """
-    Remove rows with a + in the 'Potential contaminant' column
-
-    Return a ``DataFrame`` where rows where there is a "+" in the column 'Contaminants' are removed.
-    Filters data to remove peptides matched as reverse.
-
-    :param df: Pandas ``DataFrame``
-    :return: filtered Pandas ``DataFrame``
-    """
-    return remove_columns_containing(df, 'Potential contaminant', '+')
+    return remove_rows_matching(df, colname, '+')
 
 
 def remove_only_identified_by_site(df):
@@ -82,7 +71,7 @@ def remove_only_identified_by_site(df):
     :param df: Pandas ``DataFrame``
     :return: filtered Pandas ``DataFrame``
     """
-    return remove_columns_containing(df, 'Only identified by site', '+')
+    return remove_rows_matching(df, 'Only identified by site', '+')
 
 
 def filter_localization_probability(df, threshold=0.75):
@@ -171,17 +160,19 @@ def filter_exclude(df, s):
     keep = ~np.array( [s in c for c in df.columns.values] )
     return df.iloc[:, keep]
 
-def filter_select_columns_intensity(df, columns):
+def filter_select_columns_intensity(df, prefix, columns):
     """
     Filter dataframe to include specified columns, retaining any Intensity columns.
     """
-    return df.filter(regex='^(LFQ Intensity.*|Intensity(.*)|%s)$' % ('|'.join(columns)) )
+    # Note: I use %s.+ (not %s.*) so it forces a match with the prefix string, ONLY if it is followed by something.
+    return df.filter(regex='^(%s.+|%s)$' % (prefix, '|'.join(columns)) )
 
 def filter_select_columns_ratio(df, columns):
     """
     Filter dataframe to include specified columns, retaining Ratio columns.
     """
     return df.filter(regex='^(Ratio ./. normalized.*|%s)$' % ('|'.join(columns)) )
+
 
 def filter_intensity(df, label="", with_multiplicity=False):
     """

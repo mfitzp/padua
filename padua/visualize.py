@@ -386,32 +386,27 @@ def plsr(df, v, n_components=2, mean_center=False, scale=True, fcol=None, ecol=N
 
 
     
-def enrichment(dfenr, include=None):
+def enrichment(dfenr, level=None):
     """
     Generates an enrichment pie chart series from a calculate enrichment table
-    :param df:
+    :param dfenr: dataframe with enrichments
+    :param level: the level to ungroup the
     :return:
     """
-    enrichment = dfenr.values.flatten()
-    dfenr = pd.DataFrame([enrichment, 1-enrichment], columns=dfenr.columns, index=["",""])
+    df = dfenr.sort_index(level=("Group", "Replicate","Timepoint","Technical" ), axis=1)
 
-    if include:
-        dfenr = dfenr[include]
+    if level:
+        axes = df.mul(100).T.boxplot(by=level)
+    else:
+        colors = np.array((1 - df.T.values[:, 0], df.T.values[:, 0], [0] * len(df.T.values))).T.tolist()
+        colors = [[tuple(i) for i in colors]]
+        df = df.mul(100)
+        axes = df.T.plot(kind="bar", figsize=(len(df.T) * 0.2, 10), color=colors)
+        axes.legend_.remove()
 
-    axes = dfenr.plot(kind='pie', subplots=True, figsize=(dfenr.shape[1]*4, 3))
-    for n, ax in enumerate(axes):
-        #ax.legend().set_visible(False)
-        modified, unmodified = dfenr.values[:,n]
-        total = modified + unmodified
-        enrichment = modified/total
-        ax.annotate("%.1f%%" % (100 * enrichment),
-                 xy=(0.3, 0.6),
-                 xycoords='axes fraction',
-                 color='w',
-                 size=18)
-        ax.set_xlabel( ax.get_ylabel(), fontsize=18)
-        ax.set_ylabel("")
-        ax.set_aspect('equal', 'datalim')
+    axes.set_ylim(0, 100)
+    axes.set_ylabel("% enrichment")
+    axes.set_title("")
 
     return axes
 
@@ -453,7 +448,7 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
     """
     df = df.copy()
     
-    if np.any(df.values < 0) and not is_log2:
+    if np.any(df.values[~pd.isnull(df.values)] < 0) and not is_log2:
         warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
 
     if fillna is not None:
@@ -637,7 +632,8 @@ def modifiedaminoacids(df, kind='pie'):
     df = pd.DataFrame()
     for a, n in quants.items():
         df[a] = [n]
-    df.sort(axis=1, inplace=True)
+
+    df.sort_index(axis=1, inplace=True)
     
     if kind == 'bar' or kind == 'both':
         ax1 = df.plot(kind='bar', figsize=(7,7), color=colors)
@@ -1408,7 +1404,12 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
     """
 
 
-    data = analysis.correlation(df).values
+    data = analysis.correlation(df)
+
+    if labels:
+        for axis in (0,1):
+            data.sort_index(level=labels, axis=axis, inplace=True)
+
 
     # Plot the distributions
     fig = plt.figure(figsize=(10,10))
@@ -1464,15 +1465,15 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
         ax2.axis('off')
         ax2.imshow(img)
 
-    if labels:
+    if False:
         # Build labels from the supplied axis
-        labels = df.columns.get_level_values(labels)
+
 
         fig.axes[0].set_xticks(range(n_dims))
-        fig.axes[0].set_xticklabels(labels, rotation=90)
+        fig.axes[0].set_xticklabels("", rotation=45)
 
         fig.axes[0].set_yticks(range(n_dims))
-        fig.axes[0].set_yticklabels(labels)
+        fig.axes[0].set_yticklabels("")
 
     return fig
 

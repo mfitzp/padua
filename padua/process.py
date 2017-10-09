@@ -20,7 +20,7 @@ def numeric(s):
             return s
 
 
-def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_convert_numeric=True, unmatched_columns='index'):
+def build_index_from_design(df, design, remove_prefix=None, types=None, axis=1, auto_convert_numeric=True, unmatched_columns='index'):
     """
     Build a MultiIndex from a design table.
 
@@ -40,20 +40,20 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     if 'Label' not in design.index.names:
         design = design.set_index('Label')
 
-
-    if remove is None:
-        remove = []
+    if remove_prefix is None:
+        remove_prefix = []
+    if type(remove_prefix) is str:
+        remove_prefix=[remove_prefix]
 
     unmatched_for_index = []
 
-    labels = design.index.values
     names = design.columns.values
     idx_levels = len(names)
     indexes = []
     
     # Convert numeric only columns_to_combine; except index
     if auto_convert_numeric:
-        design = design.convert_objects(convert_numeric=True)
+        design = design.apply(pd.to_numeric, errors="ignore")
         # The match columns are always strings, so the index must also be
         design.index = design.index.astype(str)
     
@@ -65,15 +65,17 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
     
     # Build the index
     for lo in df.columns.values:
+
         l = copy(lo)
-        for s in remove:
+        for s in remove_prefix:
             l = l.replace(s, '')
-        
+
         # Remove trailing/forward spaces
         l = l.strip()
         # Convert to numeric if possible
         l = numeric(l)
         # Attempt to match to the labels
+
         try:
             # Index
             idx = design.loc[str(l)]
@@ -103,11 +105,13 @@ def build_index_from_design(df, design, remove=None, types=None, axis=1, auto_co
             df = df.drop(unmatched_for_index, axis=1)
 
         df.columns = pd.MultiIndex.from_tuples(indexes, names=names)
-    
+
+    df = df.sort_index(axis=1)
+
     return df
     
 
-def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
+def build_index_from_labels(df, indices, remove_prefix=None, types=None, axis=1):
     """
     Build a MultiIndex from a list of labels and matching regex
 
@@ -123,8 +127,8 @@ def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
 
     df = df.copy()
 
-    if remove is None:
-        remove = []
+    if remove_prefix is None:
+        remove_prefix = []
 
     if types is None:
         types = {}
@@ -135,8 +139,8 @@ def build_index_from_labels(df, indices, remove=None, types=None, axis=1):
 
     for l in idx.get_level_values(0):
 
-        for s in remove:
-            l = l.replace(s, '')
+        for s in remove_prefix:
+            l = l.replace(s+" ", '')
 
         ixr = []
         for n, m in indices:
