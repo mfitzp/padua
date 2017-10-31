@@ -10,6 +10,9 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 
+# Hide numpy floating point errors during visualization.
+np.seterr(all='ignore')
+
 import warnings
 
 import scipy.spatial.distance as distance
@@ -21,6 +24,10 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.image as mplimg
 import matplotlib.cm as cm
+
+from matplotlib.cm import viridis, ScalarMappable
+from matplotlib.colors import Normalize
+
 
 from matplotlib.patches import Ellipse
 from matplotlib.colors import colorConverter
@@ -1191,199 +1198,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
             ax.scatter(x, y, s=15, c='k', lw=0, zorder=100)
 
     return ax
-    
-    
-def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, row_labels=True, col_labels=True, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
-    """
-    Hierarchical clustering of samples or proteins
 
-    Peform a hiearchical clustering on a pandas DataFrame and display the resulting clustering as a
-    heatmap.
-    The axis of clustering can be controlled with `cluster_cols` and `cluster_rows`. By default clustering is performed
-    along the X-axis, therefore to cluster samples transpose the DataFrame as it is passed, using `df.T`.
-
-    Samples are z-scored along the 0-axis (y) by default. To override this use the `z_score` param with the axis to `z_score`
-    or alternatively, `None`, to turn it off.
-
-    If a `n_col_clusters` or `n_row_clusters` is specified, this defines the number of clusters to identify and highlight
-    in the resulting heatmap. At *least* this number of clusters will be selected, in some instances there will be more
-    if 2 clusters rank equally at the determined cutoff.
-
-    If specified `fcol` will be used to colour the axes for matching samples.
-
-    :param df: Pandas ``DataFrame`` to cluster
-    :param cluster_cols: ``bool`` if ``True`` cluster along column axis
-    :param cluster_rows: ``bool`` if ``True`` cluster along row axis
-    :param n_col_clusters: ``int`` the ideal number of highlighted clusters in cols
-    :param n_row_clusters: ``int`` the ideal number of highlighted clusters in rows
-    :param fcol: ``dict`` of label:colors to be applied along the axes
-    :param z_score: ``int`` to specify the axis to Z score or `None` to disable
-    :param method: ``str`` describing cluster method, default ward
-    :param cmap: matplotlib colourmap for heatmap
-    :param return_clusters: ``bool`` return clusters in addition to axis
-    :return: matplotlib axis, or axis and cluster data
-    """
-
-
-    # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
-    def clean_axis(ax):
-        """Remove ticks, tick labels, and frame from axis"""
-        ax.get_xaxis().set_ticks([])
-        ax.get_yaxis().set_ticks([])
-        ax.set_axis_bgcolor('#ffffff')
-        for sp in ax.spines.values():
-            sp.set_visible(False)
-
-    def optimize_clusters(clusters, denD, target_n):
-        target_n = target_n - 1 # We return edges; not regions
-        threshold = np.max(clusters)
-        max_iterations = threshold
-
-        i = 0
-        while i < max_iterations:
-            cc = sch.fcluster(clusters, threshold, 'distance')
-            cco = cc[ denD['leaves'] ]
-            edges = [n for n in range(cco.shape[0]-1) if cco[n] != cco[n+1]  ]
-            n_clusters = len(edges)
-            
-            if n_clusters == target_n:
-                break
-
-            if n_clusters < target_n:
-                threshold = threshold // 2
-
-            elif n_clusters > target_n:
-                threshold = int( threshold * 1.5 )
-
-            i += 1
-
-        return edges
-
-    dfc = df.copy()
-
-    if z_score is None:
-        pass
-    elif z_score == 0:
-        dfc = (dfc - dfc.median(axis=0)) / dfc.std(axis=0)
-    elif z_score == 1:
-        dfc = ((dfc.T - dfc.median(axis=1).T) / dfc.std(axis=1).T).T
-
-
-    # Remove nan/infs
-    dfc[np.isinf(dfc)] = 0
-    dfc[np.isnan(dfc)] = 0
-
-    #dfc.dropna(axis=0, how='any', inplace=True)
-
-    # make norm
-    vmin = dfc.min().min()
-    vmax = dfc.max().max()
-    vmax = max([vmax, abs(vmin)])  # choose larger of vmin and vmax
-    vmin = vmax * -1
-
-    my_norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-
-    # dendrogram single color
-    sch.set_link_color_palette(['black'])
-
-    # cluster
-    if cluster_rows:
-        row_pairwise_dists = distance.squareform(rdistance_fn(dfc))
-        row_clusters = sch.linkage(row_pairwise_dists, method=method)
-
-    if cluster_cols:
-        col_pairwise_dists = distance.squareform(cdistance_fn(dfc.T))
-        col_clusters = sch.linkage(col_pairwise_dists, method=method)
-
-    # heatmap with row names
-    fig = plt.figure(figsize=(12, 12))
-    heatmapGS = gridspec.GridSpec(2, 2, wspace=0.0, hspace=0.0, width_ratios=[0.25, 1], height_ratios=[0.25, 1])
-
-    if cluster_cols:
-        # col dendrogram
-        col_denAX = fig.add_subplot(heatmapGS[0, 1])
-        col_denD = sch.dendrogram(col_clusters, color_threshold=np.inf)
-        clean_axis(col_denAX)
-
-    rowGSSS = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=heatmapGS[1, 0], wspace=0.0, hspace=0.0, width_ratios=[1, 0.05])
-
-    if cluster_rows:
-        # row dendrogram
-        row_denAX = fig.add_subplot(rowGSSS[0, 0])
-        row_denD = sch.dendrogram(row_clusters, color_threshold=np.inf, orientation='right')
-        clean_axis(row_denAX)
-
-    row_denD = {
-        'leaves':range(0, dfc.shape[0])
-    }
-
-    # row colorbar
-    if fcol and 'Group' in dfc.index.names:
-        class_idx = dfc.index.names.index('Group')
-
-        classcol = [fcol[x] for x in dfc.index.get_level_values(0)[row_denD['leaves']]]
-        classrgb = np.array([colorConverter.to_rgb(c) for c in classcol]).reshape(-1, 1, 3)
-        row_cbAX = fig.add_subplot(rowGSSS[0, 1])
-        row_axi = row_cbAX.imshow(classrgb, interpolation='nearest', aspect='auto', origin='lower')
-        clean_axis(row_cbAX)
-
-    # heatmap
-    heatmapAX = fig.add_subplot(heatmapGS[1, 1])
-
-    axi = heatmapAX.imshow(dfc.iloc[row_denD['leaves'], col_denD['leaves']], interpolation='nearest', aspect='auto', origin='lower'
-                           , norm=my_norm, cmap=cmap)
-    clean_axis(heatmapAX)
-
-
-    def build_labels(index, ixs):
-        zstr = zip(*[index.get_level_values(x) for x in ixs])
-        return np.array([" ".join([str(t) for t in i]) if type(i) == tuple else str(i) for i in zstr])
-
-    # row labels
-    if dfc.shape[0] <= 100:
-        heatmapAX.set_yticks(range(dfc.shape[0]))
-        heatmapAX.yaxis.set_ticks_position('right')
-        if row_labels is True:
-            row_labels = list(range(len(dfc.index.names)))
-        ylabels = build_labels(dfc.index, row_labels)[row_denD['leaves']]
-        heatmapAX.set_yticklabels(ylabels)
-
-    # col labels
-    if dfc.shape[1] <= 100:
-        heatmapAX.set_xticks(range(dfc.shape[1]))
-        if col_labels is True:
-            col_labels = list(range(len(dfc.columns.names)))
-        xlabels = build_labels(dfc.columns, col_labels)[col_denD['leaves']]
-        xlabelsL = heatmapAX.set_xticklabels(xlabels)
-        # rotate labels 90 degrees
-        for label in xlabelsL:
-            label.set_rotation(90)
-
-    # remove the tick lines
-    for l in heatmapAX.get_xticklines() + heatmapAX.get_yticklines():
-        l.set_markersize(0)
-
-    heatmapAX.grid('off')
-
-    edges = None
-
-    if cluster_cols and n_col_clusters:
-        edges = optimize_clusters(col_clusters, col_denD, n_col_clusters)
-        for edge in edges:
-            heatmapAX.axvline(edge +0.5, color='k', lw=3)
-
-    if cluster_rows and n_row_clusters:
-        edges = optimize_clusters(row_clusters, row_denD, n_row_clusters)
-        for edge in edges:
-            heatmapAX.axhline(edge +0.5, color='k', lw=3)
-
-    print(np.min(dfc.values), np.max(dfc.values))
-    if return_clusters:
-
-        return fig, dfc.iloc[row_denD['leaves'], col_denD['leaves']], edges
-
-    else:
-        return fig
 
 
 def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatter=False):
@@ -1428,7 +1243,7 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
 
         # Get the triangle, other values will be zeroed
         idx = np.tril_indices(n_dims)
-        data[idx] = np.nan
+        data.iloc[idx] = np.nan
 
     cm.set_bad('w', 1.)
     i = ax.imshow(data, cmap=cm, vmin=vmin, vmax=vmax, interpolation='none')
@@ -1713,3 +1528,287 @@ def quality_control(df):
     _barrightlabel(ax, dfs.values.flatten() )
 
     return ax
+
+
+def _optimize_clusters(clusters, denD, target_n):
+    target_n = target_n - 1  # We return edges; not regions
+    threshold = np.max(clusters)
+    max_iterations = threshold
+
+    i = 0
+    while i < max_iterations:
+        cc = sch.fcluster(clusters, threshold, 'distance')
+        cco = cc[denD['leaves']]
+        edges = [n for n in range(cco.shape[0] - 1) if cco[n] != cco[n + 1]]
+        n_clusters = len(edges)
+
+        if n_clusters == target_n:
+            break
+
+        if n_clusters < target_n:
+            threshold = threshold // 2
+
+        elif n_clusters > target_n:
+            threshold = int(threshold * 1.5)
+
+        i += 1
+
+    return edges
+
+
+def _cluster(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, z_score=0, method='ward',rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
+    dfc = df.copy()
+
+    if z_score is None:
+        pass
+    elif z_score == 0:
+        dfc = (dfc - dfc.median(axis=0)) / dfc.std(axis=0)
+    elif z_score == 1:
+        dfc = ((dfc.T - dfc.median(axis=1).T) / dfc.std(axis=1).T).T
+
+
+    # Remove nan/infs
+    dfc[np.isinf(dfc)] = 0
+    dfc[np.isnan(dfc)] = 0
+
+    # dfc.dropna(axis=0, how='any', inplace=True)
+
+
+    # cluster
+    if cluster_rows:
+        row_pairwise_dists = distance.squareform(rdistance_fn(dfc))
+        row_clusters = sch.linkage(row_pairwise_dists, method=method)
+        row_denD = sch.dendrogram(row_clusters, color_threshold=np.inf, no_plot=True)
+
+        col_denD = {'leaves': range(0, dfc.shape[1])}
+        col_clusters = None
+
+    if cluster_cols:
+        col_pairwise_dists = distance.squareform(cdistance_fn(dfc.T))
+        col_clusters = sch.linkage(col_pairwise_dists, method=method)
+        col_denD = sch.dendrogram(col_clusters, color_threshold=np.inf, no_plot=True)
+
+        row_denD = {'leaves': range(0, dfc.shape[0])}
+        row_clusters = None
+
+    edges = None
+
+    if cluster_cols and n_col_clusters:
+        edges = _optimize_clusters(col_clusters, col_denD, n_col_clusters)
+
+    if cluster_rows and n_row_clusters:
+        edges = _optimize_clusters(row_clusters, row_denD, n_row_clusters)
+
+    return dfc, row_clusters, row_denD, col_clusters, col_denD, edges
+
+def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, row_labels=True, col_labels=True, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
+    """
+    Hierarchical clustering of samples or proteins
+
+    Peform a hiearchical clustering on a pandas DataFrame and display the resulting clustering as a
+    heatmap.
+    The axis of clustering can be controlled with `cluster_cols` and `cluster_rows`. By default clustering is performed
+    along the X-axis, therefore to cluster samples transpose the DataFrame as it is passed, using `df.T`.
+
+    Samples are z-scored along the 0-axis (y) by default. To override this use the `z_score` param with the axis to `z_score`
+    or alternatively, `None`, to turn it off.
+
+    If a `n_col_clusters` or `n_row_clusters` is specified, this defines the number of clusters to identify and highlight
+    in the resulting heatmap. At *least* this number of clusters will be selected, in some instances there will be more
+    if 2 clusters rank equally at the determined cutoff.
+
+    If specified `fcol` will be used to colour the axes for matching samples.
+
+    :param df: Pandas ``DataFrame`` to cluster
+    :param cluster_cols: ``bool`` if ``True`` cluster along column axis
+    :param cluster_rows: ``bool`` if ``True`` cluster along row axis
+    :param n_col_clusters: ``int`` the ideal number of highlighted clusters in cols
+    :param n_row_clusters: ``int`` the ideal number of highlighted clusters in rows
+    :param fcol: ``dict`` of label:colors to be applied along the axes
+    :param z_score: ``int`` to specify the axis to Z score or `None` to disable
+    :param method: ``str`` describing cluster method, default ward
+    :param cmap: matplotlib colourmap for heatmap
+    :param return_clusters: ``bool`` return clusters in addition to axis
+    :return: matplotlib axis, or axis and cluster data
+    """
+
+    # helper for cleaning up axes by removing ticks, tick labels, frame, etc.
+    def clean_axis(ax):
+        """Remove ticks, tick labels, and frame from axis"""
+        ax.get_xaxis().set_ticks([])
+        ax.get_yaxis().set_ticks([])
+        ax.set_axis_bgcolor('#ffffff')
+        for sp in ax.spines.values():
+            sp.set_visible(False)
+
+
+    dfc, row_clusters, row_denD, col_clusters, col_denD, edges = _cluster(df,
+       cluster_cols=cluster_cols, cluster_rows=cluster_rows, n_col_clusters=n_col_clusters,
+       n_row_clusters=n_row_clusters, z_score=z_score, method='ward',
+       rdistance_fn=rdistance_fn, cdistance_fn=cdistance_fn
+                                               )
+
+    # make norm
+    vmin = dfc.min().min()
+    vmax = dfc.max().max()
+    vmax = max([vmax, abs(vmin)])  # choose larger of vmin and vmax
+    vmin = vmax * -1
+
+    # dendrogram single color
+    sch.set_link_color_palette(['black'])
+
+    my_norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+
+    # heatmap with row names
+    fig = plt.figure(figsize=(12, 12))
+    heatmapGS = gridspec.GridSpec(2, 2, wspace=0.0, hspace=0.0, width_ratios=[0.25, 1], height_ratios=[0.25, 1])
+
+    if cluster_cols:
+        # col dendrogram
+        col_denAX = fig.add_subplot(heatmapGS[0, 1])
+        sch.dendrogram(col_clusters, color_threshold=np.inf)
+        clean_axis(col_denAX)
+
+    rowGSSS = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=heatmapGS[1, 0], wspace=0.0, hspace=0.0, width_ratios=[1, 0.05])
+
+    if cluster_rows:
+        # row dendrogram
+        row_denAX = fig.add_subplot(rowGSSS[0, 0])
+        sch.dendrogram(row_clusters, color_threshold=np.inf, orientation='right')
+        clean_axis(row_denAX)
+
+    # row colorbar
+    if fcol and 'Group' in dfc.index.names:
+        class_idx = dfc.index.names.index('Group')
+
+        classcol = [fcol[x] for x in dfc.index.get_level_values(0)[row_denD['leaves']]]
+        classrgb = np.array([colorConverter.to_rgb(c) for c in classcol]).reshape(-1, 1, 3)
+        row_cbAX = fig.add_subplot(rowGSSS[0, 1])
+        row_axi = row_cbAX.imshow(classrgb, interpolation='nearest', aspect='auto', origin='lower')
+        clean_axis(row_cbAX)
+
+    # heatmap
+    heatmapAX = fig.add_subplot(heatmapGS[1, 1])
+
+    axi = heatmapAX.imshow(dfc.iloc[row_denD['leaves'], col_denD['leaves']], interpolation='nearest', aspect='auto', origin='lower'
+                           , norm=my_norm, cmap=cmap)
+    clean_axis(heatmapAX)
+
+
+    def build_labels(index, ixs):
+        zstr = zip(*[index.get_level_values(x) for x in ixs])
+        return np.array([" ".join([str(t) for t in i]) if type(i) == tuple else str(i) for i in zstr])
+
+    # row labels
+    if dfc.shape[0] <= 100:
+        heatmapAX.set_yticks(range(dfc.shape[0]))
+        heatmapAX.yaxis.set_ticks_position('right')
+        if row_labels is True:
+            row_labels = list(range(len(dfc.index.names)))
+        ylabels = build_labels(dfc.index, row_labels)[row_denD['leaves']]
+        heatmapAX.set_yticklabels(ylabels)
+
+    # col labels
+    if dfc.shape[1] <= 100:
+        heatmapAX.set_xticks(range(dfc.shape[1]))
+        if col_labels is True:
+            col_labels = list(range(len(dfc.columns.names)))
+        xlabels = build_labels(dfc.columns, col_labels)[col_denD['leaves']]
+        xlabelsL = heatmapAX.set_xticklabels(xlabels)
+        # rotate labels 90 degrees
+        for label in xlabelsL:
+            label.set_rotation(90)
+
+    # remove the tick lines
+    for l in heatmapAX.get_xticklines() + heatmapAX.get_yticklines():
+        l.set_markersize(0)
+
+    heatmapAX.grid('off')
+
+    if cluster_cols and n_col_clusters:
+        for edge in edges:
+            heatmapAX.axvline(edge +0.5, color='k', lw=3)
+
+    if cluster_rows and n_row_clusters:
+        for edge in edges:
+            heatmapAX.axhline(edge +0.5, color='k', lw=3)
+
+    if return_clusters:
+        return fig, dfc.iloc[row_denD['leaves'], col_denD['leaves']], edges
+
+    else:
+        return fig
+
+
+def hierarchical_timecourse(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
+    """
+    Hierarchical clustering of samples across timecourse experiment.
+
+    Peform a hiearchical clustering on a pandas DataFrame and display the resulting clustering as a
+    timecourse density plot.
+
+    Samples are z-scored along the 0-axis (y) by default. To override this use the `z_score` param with the axis to `z_score`
+    or alternatively, `None`, to turn it off.
+
+    If a `n_col_clusters` or `n_row_clusters` is specified, this defines the number of clusters to identify and highlight
+    in the resulting heatmap. At *least* this number of clusters will be selected, in some instances there will be more
+    if 2 clusters rank equally at the determined cutoff.
+
+    If specified `fcol` will be used to colour the axes for matching samples.
+
+    :param df: Pandas ``DataFrame`` to cluster
+    :param n_col_clusters: ``int`` the ideal number of highlighted clusters in cols
+    :param n_row_clusters: ``int`` the ideal number of highlighted clusters in rows
+    :param fcol: ``dict`` of label:colors to be applied along the axes
+    :param z_score: ``int`` to specify the axis to Z score or `None` to disable
+    :param method: ``str`` describing cluster method, default ward
+    :param cmap: matplotlib colourmap for heatmap
+    :param return_clusters: ``bool`` return clusters in addition to axis
+    :return: matplotlib axis, or axis and cluster data
+    """
+
+    dfc, row_clusters, row_denD, col_clusters, col_denD, edges = _cluster(df,
+       cluster_cols=cluster_cols, cluster_rows=cluster_rows, n_col_clusters=n_col_clusters,
+       n_row_clusters=n_row_clusters, z_score=z_score, method='ward',
+       rdistance_fn=rdistance_fn, cdistance_fn=cdistance_fn
+                                               )
+
+    # FIXME: Need to apply a sort function to the DataFrame to order by the clustering
+    # so we can slice the edges.
+    dfh = dfc.iloc[row_denD['leaves'], col_denD['leaves']]
+    dfh = dfh.mean(axis=0, level=[0, 1])
+
+    vmax = np.max(dfh.values)
+    color = ScalarMappable(norm=Normalize(vmin=0, vmax=vmax), cmap=viridis)
+
+    fig = plt.figure(figsize=(12, 6))
+
+    edges = [0] + edges + [dfh.shape[1]]
+
+    for n in range(len(edges) - 1):
+        ax = fig.add_subplot(2, 4, n + 1)
+
+        dfhf = dfh.iloc[:, edges[n]:edges[n + 1]]
+        mv = dfhf.mean(axis=1)
+        distances = [distance.euclidean(mv, dfhf.values[:, n]) for n in range(dfhf.shape[1])]
+        colors = [color.to_rgba(v) for v in distances]
+        order = np.argsort(distances)[::-1]
+        for y in order:
+            ax.plot(dfhf.values[:, y], c=colors[y], alpha=0.5, lw=1)  # dfhf.index.get_level_values(1),
+
+        if n > 3:
+            ax.set_xticklabels(dfhf.index.get_level_values(1))
+        else:
+            ax.set_xticklabels([])
+
+        if n % 4 != 0:
+            ax.set_yticklabels([])
+        ax.set_ylim((-3, +3))
+
+    fig.subplots_adjust(hspace=0.15, wspace=0.15)
+
+    if return_clusters:
+        return fig, dfh, edges
+
+    else:
+        return fig
