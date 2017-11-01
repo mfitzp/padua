@@ -1376,8 +1376,7 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
     try:
         import uniprot as up
     except ImportError:
-        raise ImportError("Mapping from KEGG to UniProt IDs requires uniprot package; pip install uniprot")
-
+        raise ImportError("Mapping from KEGG to UniProt IDs requires uniprot_tools package; pip install uniprot_tools")
 
     df = df.copy()
 
@@ -1409,8 +1408,6 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
         dr = np.nanmean(g1, axis=1)
 
 
-
-
     maxi = np.max(abs(dr))
     norm = mpl.colors.Normalize(vmin=-maxi, vmax=maxi)
     mapper = cm.ScalarMappable(norm=norm, cmap=cm.PuOr_r) # Orange up
@@ -1432,8 +1429,8 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
     upids = [p for p in upids if p not in uniprot_kegg_cache.keys()]
 
     if upids:
-        new_pairs = up.batch_uniprot_id_mapping_pairs('ACC+ID', 'KEGG_ID', upids)
-        uniprot_kegg_cache.update( dict(new_pairs) )
+        new_pairs = up.map(upids, f='ACC+ID', t='KEGG_ID')
+        uniprot_kegg_cache.update(new_pairs)
 
         for p in upids:
             if p not in uniprot_kegg_cache:
@@ -1443,8 +1440,9 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
         f.write('#hsa\tData\n')
         for k, c in list(node_colors.items()):
             if k in uniprot_kegg_cache and uniprot_kegg_cache[k] is not None:
-                kid = uniprot_kegg_cache[k]
-                f.write('%s\t%s\n' % (kid.split(':')[-1], c ))
+                kids = uniprot_kegg_cache[k]
+                for kegg_id in kids:
+                    f.write('%s\t%s\n' % (kegg_id.split(':')[-1], c ))
 
         # Reset file
         f.seek(0)
@@ -1566,13 +1564,11 @@ def _cluster(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_
     elif z_score == 1:
         dfc = ((dfc.T - dfc.median(axis=1).T) / dfc.std(axis=1).T).T
 
-
     # Remove nan/infs
     dfc[np.isinf(dfc)] = 0
     dfc[np.isnan(dfc)] = 0
 
     # dfc.dropna(axis=0, how='any', inplace=True)
-
 
     # cluster
     if cluster_rows:
@@ -1583,6 +1579,9 @@ def _cluster(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_
         col_denD = {'leaves': range(0, dfc.shape[1])}
         col_clusters = None
 
+        if n_row_clusters:
+            edges = _optimize_clusters(row_clusters, row_denD, n_row_clusters)
+
     if cluster_cols:
         col_pairwise_dists = distance.squareform(cdistance_fn(dfc.T))
         col_clusters = sch.linkage(col_pairwise_dists, method=method)
@@ -1591,15 +1590,11 @@ def _cluster(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_
         row_denD = {'leaves': range(0, dfc.shape[0])}
         row_clusters = None
 
-    edges = None
-
-    if cluster_cols and n_col_clusters:
-        edges = _optimize_clusters(col_clusters, col_denD, n_col_clusters)
-
-    if cluster_rows and n_row_clusters:
-        edges = _optimize_clusters(row_clusters, row_denD, n_row_clusters)
+        if n_col_clusters:
+            edges = _optimize_clusters(col_clusters, col_denD, n_col_clusters)
 
     return dfc, row_clusters, row_denD, col_clusters, col_denD, edges
+
 
 def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, row_labels=True, col_labels=True, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
     """

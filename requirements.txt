@@ -7,3 +7,4 @@ matplotlib-venn
 scikit-learn>=0.17
 requests>=2.11
 requests_toolbelt>=0.7
+uniprot_tools>=0.4.1
