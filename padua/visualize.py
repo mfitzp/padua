@@ -134,7 +134,7 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     ax = fig.add_subplot(1,1,1)
     levels = [0,1]    
 
-    for c in set(scores.columns.get_level_values('Group')):
+    for c in set(scores.columns.values):
 
         try:
             data = scores[c].values.reshape(2,-1)
@@ -426,8 +426,10 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
     each group is calculated along the y-axis (per protein) and used to generate a log2 ratio. If a log2-transformed
     dataset is supplied set `islog2=True` (a warning will be given when negative values are present).
 
-    A two-sample independent t-test is performed between each group. If `minimum_sample_n` is supplied, any values (proteins)
+    If `a` and `b` are provided a two-sample independent t-test is performed between each group. If `minimum_sample_n` is supplied, any values (proteins)
     without this number of samples will be dropped from the analysis.
+
+    If only `a` is provided, a one-sample t-test is performend.
 
     Individual data points can be labelled in the resulting plot by passing `labels_from` with a index name, and `labels_for`
     with a list of matching values for which to plot labels.
@@ -1225,6 +1227,7 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
         for axis in (0,1):
             data.sort_index(level=labels, axis=axis, inplace=True)
 
+    data = data.values
 
     # Plot the distributions
     fig = plt.figure(figsize=(10,10))
@@ -1240,10 +1243,9 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
 
     # If showing scatter plots, set the inlay portion to np.nan
     if show_scatter:
-
         # Get the triangle, other values will be zeroed
         idx = np.tril_indices(n_dims)
-        data.iloc[idx] = np.nan
+        data[idx] = np.nan
 
     cm.set_bad('w', 1.)
     i = ax.imshow(data, cmap=cm, vmin=vmin, vmax=vmax, interpolation='none')
@@ -1280,30 +1282,48 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
         ax2.axis('off')
         ax2.imshow(img)
 
-    if False:
+    if labels:
         # Build labels from the supplied axis
-
+        labels = [
+            df.columns.get_level_values(l)
+            for l in labels
+        ]
+        labels = [" ".join([str(s) for s in l]) for l in zip(*labels) ]
 
         fig.axes[0].set_xticks(range(n_dims))
-        fig.axes[0].set_xticklabels("", rotation=45)
+        fig.axes[0].set_xticklabels(labels, rotation=45)
 
         fig.axes[0].set_yticks(range(n_dims))
-        fig.axes[0].set_yticklabels("")
+        fig.axes[0].set_yticklabels(labels)
 
     return fig
 
 
-def comparedist(df1, df2, bins=50):
+def _areadist(ax, v, xr, c, bins=100, by=None, alpha=1):
+    """
+    Plot the histogram distribution but as an area plot
+    """
+    y, x = np.histogram(v[~np.isnan(v)], bins)
+    x = x[:-1]
+
+    if by is None:
+        by = np.zeros((bins,))
+
+    ax.fill_between(x, y, by, facecolor=c, alpha=alpha)
+    return y
+
+def compareimputed(df1, bins=50):
     """
     Compare the distributions of two DataFrames giving visualisations of:
      - individual and combined distributions
      - distribution of non-common values
      - distribution of non-common values vs. each side
 
+    Useful for visualising effects of data imputation.
+
     Plot distribution as area (fill_between) + mean, median vertical bars.
 
     :param df1: `pandas.DataFrame`
-    :param df2: `pandas.DataFrame`
     :param bins: `int` number of bins for histogram
     :return: Figure
     """
@@ -1312,29 +1332,16 @@ def comparedist(df1, df2, bins=50):
 
     xr = np.nanmin( [np.nanmin(df1), np.nanmin(df2)] ), np.nanmax( [np.nanmax(df1), np.nanmax(df2)] )
 
-    def areadist(ax, v, xr, c, bins=100, by=None, alpha=1):
-        """
-        Plot the histogram distribution but as an area plot
-        """
-        y, x = np.histogram(v[~np.isnan(v)], bins)
-        x = x[:-1]
-
-        if by is None:
-            by = np.zeros( (bins, ) )
-
-        ax.fill_between(x, y, by, facecolor=c, alpha=alpha)
-        return y
-
     ax1.set_title('Distributions of A and B')
-    areadist(ax1, df2.values, xr, c='r', bins=bins)
-    areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3)
+    _areadist(ax1, df2.values, xr, c='r', bins=bins)
+    _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3)
     ax1.set_xlabel('Value')
     ax1.set_ylabel('Count')
 
     ax2.set_title('Distributions of A and values unique to B')
     # Calculate what is different isolate those values
-    areadist(ax2, df2.values[ df2.values != df1.values ], xr, c='r', bins=bins)
-    areadist(ax2, df1.values, xr, c='k', bins=bins, alpha=0.3)
+    _areadist(ax2, df2.values[ df2.values != df1.values ], xr, c='r', bins=bins)
+    _areadist(ax2, df1.values, xr, c='k', bins=bins, alpha=0.3)
     ax2.set_xlabel('Value')
     ax2.set_ylabel('Count')
 
@@ -1347,11 +1354,54 @@ def comparedist(df1, df2, bins=50):
         dfc[i[:-1]] = np.max(dfc[i[:-1]].values, axis=1)
 
     ax3.set_title('Distributions of associated values of A and substituted values in B')
-    areadist(ax3, df2.values[ df2.values != df1.values ], xr, c='r')
-    areadist(ax3, df1.values[ dfc.values == 1 ], xr, c='k', alpha=0.3)
+    _areadist(ax3, df2.values[ df2.values != df1.values ], xr, c='r')
+    _areadist(ax3, df1.values[ dfc.values == 1 ], xr, c='k', alpha=0.3)
     ax3.set_xlabel('Value')
     ax3.set_ylabel('Count')
 
+    return fig
+
+
+def comparedist(df, *args, **kwargs):
+    """
+    Compare the distributions of two DataFrames giving visualisations of:
+     - individual and combined distributions
+     - distribution of non-common values
+     - distribution of non-common values vs. each side
+
+    Plot distribution as area (fill_between) + mean, median vertical bars.
+
+    :param df1: `pandas.DataFrame`
+    :param *:  a number of `pandas.DataFrames` to compare to df1
+    :param bins: `int` number of bins for histogram
+    :return: Figure
+    """
+
+    bins = kwargs.get('bins', 50)
+
+
+    # The base for comparisons is the first passed selector.
+    base_selector, selectors = args[0], args[1:]
+    df1 = df[base_selector]
+
+    fig, axes = plt.subplots(len(selectors), 1, figsize=(10, len(selectors) * 5))
+
+    if not isinstance(axes, np.ndarray):
+        axes = [axes]  # mpl returns a single object when only one.
+
+    for n, (ax1, selector) in enumerate(zip(axes, selectors)):
+
+        dfn = df[selector]
+
+        xr = np.nanmin( [np.nanmin(df1), np.nanmin(dfn)] ), np.nanmax( [np.nanmax(df1), np.nanmax(dfn)] )
+
+        ax1.set_title('Distributions of %s and %s' % (base_selector, selector))
+        _areadist(ax1, dfn.values, xr, c='r', bins=bins)
+        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3)
+        ax1.set_xlabel('Value')
+        ax1.set_ylabel('Count')
+
+    fig.tight_layout()
     return fig
 
 
@@ -1467,6 +1517,7 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
         image = Image.open(requests.get('http://www.kegg.jp%s' % m.group(1), stream=True).raw)
         width, height = image.size   # Get dimensions
         image = image.crop((1, 1, width-1, height-1)) # Crop black outline
+        print("Scale range: %.2f .. %.2f" % (-maxi, maxi))
 
         return image
 
@@ -1784,15 +1835,18 @@ def hierarchical_timecourse(df, cluster_cols=True, cluster_rows=False, n_col_clu
         ax = fig.add_subplot(2, 4, n + 1)
 
         dfhf = dfh.iloc[:, edges[n]:edges[n + 1]]
+        xpos = dfhf.index.get_level_values(1)
+
         mv = dfhf.mean(axis=1)
         distances = [distance.euclidean(mv, dfhf.values[:, n]) for n in range(dfhf.shape[1])]
         colors = [color.to_rgba(v) for v in distances]
         order = np.argsort(distances)[::-1]
         for y in order:
-            ax.plot(dfhf.values[:, y], c=colors[y], alpha=0.5, lw=1)  # dfhf.index.get_level_values(1),
+            ax.plot(xpos, dfhf.values[:, y], c=colors[y], alpha=0.5, lw=1)  # dfhf.index.get_level_values(1),
+            ax.set_xticks(xpos)
 
         if n > 3:
-            ax.set_xticklabels(dfhf.index.get_level_values(1))
+            ax.set_xticklabels(xpos)
         else:
             ax.set_xticklabels([])
 

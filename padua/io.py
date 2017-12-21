@@ -80,7 +80,17 @@ def write_perseus(f, df):
     df.columns = pd.MultiIndex.from_tuples([(k, map_field_type(n, k)) for n, k in enumerate(df.columns)], names=["Label","Type"])
     df = df.transpose().reset_index().transpose()
     df.to_csv(f, index=False, header=False)
-    
+
+
+def _protein_id(s): return str(s).split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
+
+def _get_positions(df):
+    for c in ['Positions','Position','Positions within proteins']:
+        try:
+            return [str(int(_protein_id(k))) for k in df.index.get_level_values(c)]
+        except KeyError:
+            pass
+    raise KeyError("No position column found.")
 
 def write_phosphopath(df, f, extra_columns=None):
     """
@@ -101,11 +111,9 @@ def write_phosphopath(df, f, extra_columns=None):
     :return:
     """
 
-    def _protein_id(s): return str(s).split(';')[0].split(' ')[0].split('_')[0].split('-')[0]
-
     proteins = [_protein_id(k) for k in df.index.get_level_values('Proteins')]
     amino_acids = df.index.get_level_values('Amino acid')
-    positions = [_protein_id(k) for k in df.index.get_level_values('Positions')]
+    positions = _get_positions(df)
     multiplicity = [k[-1] for k in df.index.get_level_values('Multiplicity')]
 
     apos = ["%s%s" % x for x in zip(amino_acids, positions)]
@@ -118,7 +126,7 @@ def write_phosphopath(df, f, extra_columns=None):
 
     phdf.to_csv(f, sep='\t', index=None, header=None)
 
-def write_phosphopath_ratio(df, f, v, a=None, b=None):
+def write_phosphopath_ratio(df, f, a, *args, **kwargs):
     """
     Write out the data frame ratio between two groups
     protein-Rsite-multiplicity-timepoint
@@ -135,27 +143,39 @@ def write_phosphopath_ratio(df, f, v, a=None, b=None):
     Q9Y4G8-S1022-1-1	0.518
     P35658-S1023-1-1	0.52
 
+    Provide a dataframe, filename for output and a control selector. A series of
+     selectors following this will be compared (ratio mean) to the first. If you
+     provide a kwargs timepoint_idx the timepoint information from your selection will
+     be added from the selector index, e.g. timepoint_idx=1 will use the first level
+     of the selector as timepoint information, so ("Control", 30) would give timepoint 30.
+
     :param df:
-    :param f:
-    :param v: Value ratio
-    :param t: Timepoint
     :param a:
-    :param b:
+    :param *args
+    :param **kwargs: use timepoint= to define column index for timepoint information, extracted from args.
     :return:
     """
+    timepoint_idx = kwargs.get('timepoint_idx', None)
 
     proteins = [get_protein_id(k) for k in df.index.get_level_values('Proteins')]
     amino_acids = df.index.get_level_values('Amino acid')
-    positions = [get_protein_id(k) for k in df.index.get_level_values('Positions within proteins')]
+    positions = _get_positions(df)
     multiplicity = [int(k[-1]) for k in df.index.get_level_values('Multiplicity')]
 
     apos = ["%s%s" % x for x in zip(amino_acids, positions)]
 
-    prar = ["%s-%s-%d-1" % x for x in zip(proteins, apos, multiplicity)]
+    phdfs = []
 
-    phdf = pd.DataFrame(np.array(list(zip(prar, v))))
-    phdf.columns = ["ID", "Ratio"]
-    phdf.to_csv(f, sep='\t', index=None)
+    for c in args:
+        v = df[a].mean(axis=1).values / df[c].mean(axis=1).values
+        tps = [c[timepoint_idx]] * len(proteins) if timepoint_idx else [1] * len(proteins)
+
+        prar = ["%s-%s-%d-%d" % x for x in zip(proteins, apos, multiplicity, tps)]
+        phdf = pd.DataFrame(np.array(list(zip(prar, v))))
+        phdf.columns = ["ID", "Ratio"]
+        phdfs.append(phdf)
+
+    pd.concat(phdfs).to_csv(f, sep='\t', index=None)
 
 
 def write_r(df, f, sep=",", index_join="@", columns_join="."):

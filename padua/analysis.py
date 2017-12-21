@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import requests
+import warnings
 import scipy as sp
 from scipy import stats
 
@@ -357,7 +358,7 @@ def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=Tr
     else:
         data = "\n".join([get_protein_id(s) for s in df])
 
-    r = requests.post("http://www.pantherdb.org/webservices/garuda/enrichment.jsp", data={
+    r = requests.post("http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp", data={
             'organism': organism,
             'type': 'enrichment',
             'enrichmentType': enrichment},
@@ -372,10 +373,10 @@ def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=Tr
     except ValueError:
         return None
 
-    go.columns = ["GO", "Name", "Protein", "P"]
-    go = go.set_index(["GO","Name"])
+    go.columns = ["GO", "Name", "Gene ID", "P", "FDR"]
+    go = go.set_index(["GO", "Name"])
     if summary:
-        go = go.drop("Protein", axis=1).mean(axis=0, level=["GO","Name"])
+        go = go.drop("Gene ID", axis=1).mean(axis=0, level=["GO","Name"])
 
     if fdr:
         go = go[ go["P"] < fdr ]
@@ -430,8 +431,69 @@ def anova_1way(df, *args, fdr=0.05):
 
     return df
 
-    
-    
-    
-    
-    
+
+def ttest_1samp(df, is_log2=False, fillna=None):
+    """
+    Perform 1 sample t-test on a dataframe df1
+
+     The mean of
+    each group is calculated along the y-axis (per protein) and used to generate a log2 ratio. If a log2-transformed
+    dataset is supplied set `islog2=True` (a warning will be given when negative values are present).
+
+    :param df: Pandas `dataframe`
+    :param is_log2: `bool` is the data log2 transformed already?
+    :param fillna: `float` fill NaN values with value (default: 0)
+    :return:
+    """
+    df = df.copy()
+
+    if np.any(df.values[~pd.isnull(df.values)] < 0) and not is_log2:
+        warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
+
+    if fillna is not None:
+        df = df.fillna(fillna)
+
+    g1 = df[a].values
+
+    # Calculate the p value one sample t
+    g1 = np.ma.masked_where(np.isnan(g1), g1)
+    t, p = sp.stats.mstats.ttest_1samp(g1.T, popmean=0)
+
+    p = np.array(p)  # Unmask
+
+    return np.array(t), np.array(p) # Unmask
+
+
+def ttest_ind(df, s1, s2, is_log2=False, fillna=None):
+    """
+    Perform 2 sample independent samples t-test on a dataframe df, selected by selector s1
+    and selector s2.
+
+     The mean of
+    each group is calculated along the y-axis (per protein) and used to generate a log2 ratio. If a log2-transformed
+    dataset is supplied set `islog2=True` (a warning will be given when negative values are present).
+
+    :param df: Pandas `dataframe`
+    :param s1: Pandas `dataframe` selector.
+    :param s2: Pandas `dataframe` selector.
+    :param is_log2: `bool` is the data log2 transformed already?
+    :param fillna: `float` fill NaN values with value (default: 0)
+    :return:
+    """
+    df = df.copy()
+
+    if np.any(df.values[~pd.isnull(df.values)] < 0) and not is_log2:
+        warnings.warn("Input data has negative values. If data is log2 transformed, set is_log2=True.")
+
+    if fillna is not None:
+        df = df.fillna(fillna)
+
+    g1, g2 = df[s1].values, df[s2].values
+
+    g1 = np.ma.masked_where(np.isnan(g1), g1)
+    g2 = np.ma.masked_where(np.isnan(g2), g2)
+
+    # Calculate the p value between two groups (t-test)
+    t, p = sp.stats.mstats.ttest_ind(g1.T, g2.T)
+
+    return np.array(t), np.array(p) # Unmask
