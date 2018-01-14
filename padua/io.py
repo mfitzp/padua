@@ -166,9 +166,16 @@ def write_phosphopath_ratio(df, f, a, *args, **kwargs):
 
     phdfs = []
 
+    # Convert timepoints to 1-based ordinal.
+    tp_map = set()
+    for c in args:
+        tp_map.add(c[timepoint_idx])
+    tp_map = sorted(tp_map)
+
     for c in args:
         v = df[a].mean(axis=1).values / df[c].mean(axis=1).values
-        tps = [c[timepoint_idx]] * len(proteins) if timepoint_idx else [1] * len(proteins)
+        tp = [1 + tp_map.index(c[timepoint_idx])]
+        tps = tp * len(proteins) if timepoint_idx else [1] * len(proteins)
 
         prar = ["%s-%s-%d-%d" % x for x in zip(proteins, apos, multiplicity, tps)]
         phdf = pd.DataFrame(np.array(list(zip(prar, v))))
