@@ -1062,7 +1062,7 @@ def rankintensity(df, colors=None, labels_from='Protein names', number_of_annota
     # Set the dimensions so we can plot the labels correctly.
     ax.scatter(x, y, alpha=0, zorder=-1)
 
-    ax.set_ylabel("Intensity ($log_{10}$)")
+    ax.set_ylabel("Total intensity ($log_{10}$)")
     ax.set_xlabel("Ranked phosphoproteins")
 
     # Defines ranges over which text can be slotted in (avoid y overlapping)
