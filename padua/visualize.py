@@ -400,7 +400,7 @@ def enrichment(dfenr, level=None):
     :param level: the level to ungroup the
     :return:
     """
-    df = dfenr.sort_index(level=("Group", "Replicate","Timepoint","Technical" ), axis=1)
+    df = dfenr.sort_index(level=("Group", "Biological","Timepoint","Technical" ), axis=1)
 
     if level:
         axes = df.mul(100).T.boxplot(by=level)
