@@ -28,12 +28,13 @@ import matplotlib.cm as cm
 from matplotlib.cm import viridis, ScalarMappable
 from matplotlib.colors import Normalize
 
-
 from matplotlib.patches import Ellipse
 from matplotlib.colors import colorConverter
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from io import BytesIO, StringIO
+
+from adjustText import adjust_text
 
 from . import analysis
 from . import process
@@ -418,7 +419,31 @@ def enrichment(dfenr, level=None):
     return axes
 
 
-def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshold=2, minimum_sample_n=0, estimate_qvalues=False, labels_from=None, labels_for=None, title=None, label_format=None, markersize=64, s0=0.00001, draw_fdr=True, is_log2=False, fillna=None, label_sig_only=True, ax=None, xlim=None, ylim=None, fc='grey', fc_sig='blue', fc_sigr='red'):
+def volcano(df, a, b=None,
+            fdr=0.05,
+            figsize=(8,10),
+            show_numbers=True,
+            threshold=2,
+            minimum_sample_n=0,
+            estimate_qvalues=False,
+            labels_from=None,
+            labels_for=None,
+            title=None,
+            label_format=None,
+            markersize=64,
+            s0=0.00001,
+            draw_fdr=True,
+            is_log2=False,
+            fillna=None,
+            label_sig_only=True,
+            ax=None,
+            xlim=None,
+            ylim=None,
+            fc='grey',
+            fc_sig='blue',
+            fc_sigr='red',
+            adjust_labels=False
+            ):
     """
     Volcano plot of two sample groups showing t-test p value vs. log2(fc).
 
@@ -558,6 +583,7 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
     scatter(ax, _FILTER_OUT2, fc_sig, alpha=0.3)
 
     if labels_for:
+        texts = []
         idxs = get_index_list( df.index.names, labels_from )
         for shown, label, x, y in zip( _FILTER_IN , df.index.values, dr, -np.log10(p)):
             
@@ -565,8 +591,12 @@ def volcano(df, a, b=None, fdr=0.05, figsize=(8,10), show_numbers=True, threshol
                 label = build_combined_label( label, idxs, label_format=label_format)
                 
                 if labels_for == True or any([l in label for l in labels_for]):
-                    r, ha, ofx, ofy =  (30, 'left', 0.15, 0.02) if x >= 0 else (-30, 'right', -0.15, 0.02)
-                    t = ax.text(x+ofx, y+ofy, label , rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+                    t = ax.text(x, y, label , ha='center', va='center', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+                    texts.append(t)
+
+        # Adjust spacing/positioning of labels if required.
+        if texts and adjust_labels:
+            adjust_text(texts, arrowprops=dict(arrowstyle='->', color='red'))
 
     scatter(ax, _FILTER_IN, fc_sigr)
     
