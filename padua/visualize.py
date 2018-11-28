@@ -185,7 +185,7 @@ def _pca_scores(
         texts = []
 
         for n, (x, y) in enumerate(scores_f.T.values):
-            t = ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs, ', '), ha='center', va='center', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
+            t = ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs, ', '), bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
             texts.append(t)
 
         if texts and optimize_label_iter:
@@ -246,7 +246,7 @@ def _pca_weights(
             idxs = get_index_list( wts.index.names, label_weights )
             for x in wti:
                 y = wts.iloc[x]
-                t = ax.text(x, y, build_combined_label( wts.index.values[x], idxs), ha='center', va='center', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+                t = ax.text(x, y, build_combined_label( wts.index.values[x], idxs), bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
                 texts.append(t)
 
         if texts and optimize_label_iter:
