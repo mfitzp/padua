@@ -1329,7 +1329,7 @@ def correlation(df, cm=cm.PuOr_r, vmin=None, vmax=None, labels=None, show_scatte
     return fig
 
 
-def _areadist(ax, v, xr, c, bins=100, by=None, alpha=1):
+def _areadist(ax, v, xr, c, bins=100, by=None, alpha=1, label=None):
     """
     Plot the histogram distribution but as an area plot
     """
@@ -1339,10 +1339,10 @@ def _areadist(ax, v, xr, c, bins=100, by=None, alpha=1):
     if by is None:
         by = np.zeros((bins,))
 
-    ax.fill_between(x, y, by, facecolor=c, alpha=alpha)
+    ax.fill_between(x, y, by, facecolor=c, alpha=alpha, label=label)
     return y
 
-def compareimputed(df1, bins=50):
+def compareimputed(df1, df2, bins=50):
     """
     Compare the distributions of two DataFrames giving visualisations of:
      - individual and combined distributions
@@ -1354,6 +1354,7 @@ def compareimputed(df1, bins=50):
     Plot distribution as area (fill_between) + mean, median vertical bars.
 
     :param df1: `pandas.DataFrame`
+    :param df2: `pandas.DataFrame`
     :param bins: `int` number of bins for histogram
     :return: Figure
     """
@@ -1402,7 +1403,8 @@ def comparedist(df, *args, **kwargs):
     Plot distribution as area (fill_between) + mean, median vertical bars.
 
     :param df1: `pandas.DataFrame`
-    :param *:  a number of `pandas.DataFrames` to compare to df1
+    :param arg0: the base dataframe *selector* to perform calculation against.
+    :param *: a number of `pandas.DataFrames` selectors to compare to arg0
     :param bins: `int` number of bins for histogram
     :return: Figure
     """
@@ -1426,10 +1428,13 @@ def comparedist(df, *args, **kwargs):
         xr = np.nanmin( [np.nanmin(df1), np.nanmin(dfn)] ), np.nanmax( [np.nanmax(df1), np.nanmax(dfn)] )
 
         ax1.set_title('Distributions of %s and %s' % (base_selector, selector))
-        _areadist(ax1, dfn.values, xr, c='r', bins=bins)
-        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3)
+        _areadist(ax1, dfn.values, xr, c='r', bins=bins, label=str(base_selector))
+        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3, label=str(selector))
+
         ax1.set_xlabel('Value')
         ax1.set_ylabel('Count')
+
+        ax1.legend(loc='upper right')
 
     fig.tight_layout()
     return fig
