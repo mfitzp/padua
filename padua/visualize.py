@@ -39,7 +39,7 @@ from adjustText import adjust_text
 from . import analysis
 from . import process
 from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
-                   hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx
+                   hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx, join_label
 
 
 from PIL import Image
@@ -51,6 +51,8 @@ import re
 
 uniprot_kegg_cache = {}
 
+
+OPTIMIZE_LABEL_ITER_DEFAULT = 100
 
 
 # Add ellipses for confidence intervals, with thanks to Joe Kington
@@ -112,7 +114,19 @@ def plot_cov_ellipse(cov, pos, nstd=2, **kwargs):
 
 
 
-def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersize=30, label_scores=None, show_covariance_ellipse=True, **kwargs):
+def _pca_scores(
+        scores,
+        pc1=0,
+        pc2=1,
+        fcol=None,
+        ecol=None,
+        marker='o',
+        markersize=30,
+        label_scores=None,
+        show_covariance_ellipse=True,
+        optimize_label_iter=OPTIMIZE_LABEL_ITER_DEFAULT,
+        **kwargs
+    ):
     """
     Plot a scores plot for two principal components as AxB scatter plot.
 
@@ -168,10 +182,18 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     if label_scores:
         scores_f = scores.iloc[ [pc1, pc2] ]
         idxs = get_index_list( scores_f.columns.names, label_scores )
+        texts = []
 
         for n, (x, y) in enumerate(scores_f.T.values):
-            r, ha = (30, 'left')
-            ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs, ', '), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
+            t = ax.text(x, y, build_combined_label( scores_f.columns.values[n], idxs, ', '), ha='center', va='center', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.6))
+            texts.append(t)
+
+        if texts and optimize_label_iter:
+            adjust_text(
+                texts,
+                lim=optimize_label_iter,
+                arrowprops=dict(arrowstyle='->', color='red')
+            )
 
     ax.set_xlabel(scores.index[pc1], fontsize=16)
     ax.set_ylabel(scores.index[pc2], fontsize=16)
@@ -179,9 +201,16 @@ def _pca_scores(scores, pc1=0, pc2=1, fcol=None, ecol=None, marker='o', markersi
     return ax
 
 
-def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weights=None, **kwargs):
+def _pca_weights(
+        weights,
+        pc,
+        threshold=None,
+        label_threshold=None,
+        label_weights=None,
+        optimize_label_iter=OPTIMIZE_LABEL_ITER_DEFAULT,
+        **kwargs
+    ):
     """
-
     :param weights:
     :param pc:
     :param threshold:
@@ -199,6 +228,7 @@ def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weight
     ax.set_aspect(1./ax.get_data_ratio())
     
     wts = weights.iloc[:, pc]
+    texts = []
 
     if threshold:
         if label_threshold is None:
@@ -216,8 +246,15 @@ def _pca_weights(weights, pc, threshold=None, label_threshold=None, label_weight
             idxs = get_index_list( wts.index.names, label_weights )
             for x in wti:
                 y = wts.iloc[x]
-                r, ha =  (30, 'left') if y >= 0 else (-30, 'left')
-                ax.text(x, y, build_combined_label( wts.index.values[x], idxs), rotation=r, ha=ha, va='baseline', rotation_mode='anchor', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+                t = ax.text(x, y, build_combined_label( wts.index.values[x], idxs), ha='center', va='center', bbox=dict(boxstyle='round,pad=0.3', fc='#ffffff', ec='none', alpha=0.4))
+                texts.append(t)
+
+        if texts and optimize_label_iter:
+            adjust_text(
+                texts,
+                lim=optimize_label_iter,
+                arrowprops=dict(arrowstyle='->', color='red')
+            )
 
         ax.axhline(threshold, 0, 1)
         ax.axhline(-threshold, 0, 1)
@@ -401,7 +438,7 @@ def enrichment(dfenr, level=None):
     :param level: the level to ungroup the
     :return:
     """
-    df = dfenr.sort_index(level=("Group", "Biological","Timepoint","Technical" ), axis=1)
+    df = dfenr.sort_index(level=("Group", "Replicate","Timepoint","Technical" ), axis=1)
 
     if level:
         axes = df.mul(100).T.boxplot(by=level)
@@ -442,7 +479,7 @@ def volcano(df, a, b=None,
             fc='grey',
             fc_sig='blue',
             fc_sigr='red',
-            adjust_labels=False
+            optimize_label_iter=OPTIMIZE_LABEL_ITER_DEFAULT
             ):
     """
     Volcano plot of two sample groups showing t-test p value vs. log2(fc).
@@ -478,6 +515,8 @@ def volcano(df, a, b=None,
     :param label_sig_only: `bool` only label significant values
     :param ax: matplotlib `axis` on which to draw
     :param fc: `str` hex or matplotlib color code, default color of points
+    :param optimize_label_iter: `50` (default) number of iterations to attempt to optimize label positions.
+                                Increase for clearer positions (longer processing time).
     :return:
     """
     df = df.copy()
@@ -595,8 +634,12 @@ def volcano(df, a, b=None,
                     texts.append(t)
 
         # Adjust spacing/positioning of labels if required.
-        if texts and adjust_labels:
-            adjust_text(texts, arrowprops=dict(arrowstyle='->', color='red'))
+        if texts and optimize_label_iter:
+            adjust_text(
+                texts,
+                lim=optimize_label_iter,
+                arrowprops=dict(arrowstyle='->', color='red')
+            )
 
     scatter(ax, _FILTER_IN, fc_sigr)
     
@@ -1428,8 +1471,8 @@ def comparedist(df, *args, **kwargs):
         xr = np.nanmin( [np.nanmin(df1), np.nanmin(dfn)] ), np.nanmax( [np.nanmax(df1), np.nanmax(dfn)] )
 
         ax1.set_title('Distributions of %s and %s' % (base_selector, selector))
-        _areadist(ax1, dfn.values, xr, c='r', bins=bins, label=str(base_selector))
-        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3, label=str(selector))
+        _areadist(ax1, dfn.values, xr, c='r', bins=bins, label=join_label(base_selector))
+        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3, label=join_label(selector))
 
         ax1.set_xlabel('Value')
         ax1.set_ylabel('Count')

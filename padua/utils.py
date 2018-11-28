@@ -186,6 +186,20 @@ def get_index_list(l, ms):
     return [l.index(s) for s in ms if s in l]
 
 
+def join_label(sl):
+    """
+    Combine a list of strings to a single str, joined by sep.
+    Passes through single strings.
+    :param sl:
+    :return:
+    """
+    if isinstance(sl, str):
+        # Already is a string.
+        return sl
+
+    return ' '.join(str(s) for s in sl)
+
+
 def build_combined_label(sl, idxs, sep=' ', label_format=None):
     """
     Generate a combined label from a list of indexes
@@ -199,6 +213,7 @@ def build_combined_label(sl, idxs, sep=' ', label_format=None):
 
     :return: `str` of combined label
     """
+
     if label_format:
         return label_format % tuple([get_shortstr(str(sl[n])) for n in idxs])
     else:
