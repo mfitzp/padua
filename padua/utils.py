@@ -1,6 +1,8 @@
 import numpy as np
 import scipy as sp
 import scipy.interpolate
+import requests
+from io import StringIO
 
 
 def qvalues(pv, m = None, verbose = False, lowmem = False, pi0 = None):
@@ -326,3 +328,29 @@ def find_nearest_idx(array,value):
     array[np.isnan(array)] = 1
     idx = (np.abs(array-value)).argmin()
     return idx
+
+def get_uniprot_id_mapping_pairs(f, t, seqids):
+
+    r = requests.post(
+        'https://www.uniprot.org/uploadlists/',
+        files={'file': StringIO(' '.join(seqids))},
+        params={
+            'from': 'ACC+ID',
+            'to': 'KEGG_ID',
+            'format': 'tab',
+        },
+        headers={'User-Agent': 'Python / padua - martin.fitzpatrick@gmail.com'}
+    )
+    result = {}
+
+    if r.text and 'html' not in r.text[:500].lower():
+        # Looks legitimate data.
+        lines = r.text.splitlines()
+        for line in lines[1:]:
+            key, value = line.split('\t')
+            if key in result:
+                result[key].add(value)
+            else:
+                result[key] = set([value])
+
+    return result

@@ -39,7 +39,7 @@ from adjustText import adjust_text
 from . import analysis
 from . import process
 from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
-                   hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx, format_label
+                   hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx, format_label, get_uniprot_id_mapping_pairs
 
 
 from PIL import Image
@@ -1482,6 +1482,8 @@ def comparedist(df, *args, **kwargs):
 
         ax1.set_xlabel(xlabel)
         ax1.set_ylabel(ylabel)
+        _, ymax = ax1.get_ylim()
+        ax1.set_ylim(0, ymax)
 
         ax1.legend(loc='upper right')
 
@@ -1506,11 +1508,6 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
     :param z_score:
     :return:
     """
-
-    try:
-        import uniprot as up
-    except ImportError:
-        raise ImportError("Mapping from KEGG to UniProt IDs requires uniprot_tools package; pip install uniprot_tools")
 
     df = df.copy()
 
@@ -1563,12 +1560,13 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
     upids = [p for p in upids if p not in uniprot_kegg_cache.keys()]
 
     if upids:
-        new_pairs = up.map(upids, f='ACC+ID', t='KEGG_ID')
+        new_pairs = get_uniprot_id_mapping_pairs('ACC+ID', 'KEGG_ID', upids)
         uniprot_kegg_cache.update(new_pairs)
 
         for p in upids:
             if p not in uniprot_kegg_cache:
                 uniprot_kegg_cache[p] = None # Not found, don't look again
+
 
     with StringIO() as f:
         f.write('#hsa\tData\n')
@@ -1581,7 +1579,7 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
         # Reset file
         f.seek(0)
 
-        url = 'http://www.kegg.jp/kegg-bin/mcolor_pathway'
+        url = 'https://www.kegg.jp/kegg-bin/mcolor_pathway'
         m = MultipartEncoder(
             fields={
                 'map': pathway,
@@ -1594,8 +1592,9 @@ def kegg_pathway(df, pathway, a, b=None, ids_from="Proteins", cmap=cm.PuOr_r, is
 
     r = requests.post(url, data=m, headers={'Content-Type': m.content_type})
     if r.status_code == 200:
-        ms = re.finditer("document.pathwayimage.src='(/tmp/mark_pathway[^']*?)'.*?>(.*?)<", r.text)
-        m = list(ms)[0]
+        # src="/tmp/mark_pathway154353327948969/hsa04010.1.png"
+        ms = re.finditer('src="(/tmp/mark_pathway[^"]*.png)"', r.text)
+        m = list(ms).pop()
 
         # Download image data
         image = Image.open(requests.get('http://www.kegg.jp%s' % m.group(1), stream=True).raw)
