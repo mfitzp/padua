@@ -384,7 +384,7 @@ def go_enrichment(df, enrichment='function', organism='Homo sapiens', summary=Tr
     return go.sort_values(by="P", ascending=True)
 
 
-def anova_1way(df, *args, fdr=0.05):
+def anova_1way(df, *args, **kwargs):
     """
     Perform Analysis of Variation (ANOVA) on provided dataframe
     and for specified groups. Groups for analysis can be specified
@@ -402,8 +402,8 @@ def anova_1way(df, *args, fdr=0.05):
         raise Exception("Not enough arguments. Provide at least two group/indexes for comparison.")
     
     # Select columns for test
-
     df = df[list(args)]
+    fdr = kwargs.get('fdr', 0.05)
     
     pv = []
     tv = []

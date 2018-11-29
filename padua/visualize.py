@@ -1864,7 +1864,22 @@ def hierarchical(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False
         return fig
 
 
-def hierarchical_timecourse(df, cluster_cols=True, cluster_rows=False, n_col_clusters=False, n_row_clusters=False, fcol=None, z_score=0, method='ward', cmap=cm.PuOr_r, return_clusters=False, rdistance_fn=distance.pdist, cdistance_fn=distance.pdist ):
+def hierarchical_timecourse(
+        df,
+        cluster_cols=True,
+        cluster_rows=False,
+        n_col_clusters=False,
+        n_row_clusters=False,
+        fcol=None,
+        z_score=0,
+        method='ward',
+        cmap=cm.PuOr_r,
+        return_clusters=False,
+        rdistance_fn=distance.pdist,
+        cdistance_fn=distance.pdist,
+        xlabel='Timepoint',
+        ylabel='log$_2$ Fold Change'
+    ):
     """
     Hierarchical clustering of samples across timecourse experiment.
 
@@ -1925,11 +1940,15 @@ def hierarchical_timecourse(df, cluster_cols=True, cluster_rows=False, n_col_clu
 
         if n > 3:
             ax.set_xticklabels(xpos)
+            ax.set_xlabel(xlabel)
         else:
             ax.set_xticklabels([])
 
         if n % 4 != 0:
             ax.set_yticklabels([])
+        else:
+            ax.set_ylabel(ylabel)
+
         ax.set_ylim((-3, +3))
 
     fig.subplots_adjust(hspace=0.15, wspace=0.15)
