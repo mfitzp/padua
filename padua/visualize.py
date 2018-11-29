@@ -39,7 +39,7 @@ from adjustText import adjust_text
 from . import analysis
 from . import process
 from .utils import qvalues, get_protein_id, get_protein_ids, get_protein_id_list, get_shortstr, get_index_list, build_combined_label, \
-                   hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx, join_label
+                   hierarchical_match, chunks, calculate_s0_curve, find_nearest_idx, format_label
 
 
 from PIL import Image
@@ -1450,12 +1450,16 @@ def comparedist(df, *args, **kwargs):
     :param bins: `int` number of bins for histogram
     :param xlabel: label for X axis
     :param ylabel: label for Y axis
+    :param base_fmt: Text format to use for base selector legend. Python .format() syntax.
+    :param arg_fmt: Text format to use for format, with selectors legend. Python .format() syntax.
     :return: Figure
     """
 
     bins = kwargs.get('bins', 50)
     xlabel = kwargs.get('xlabel', 'Value')
     ylabel = kwargs.get('ylabel', 'Count')
+    base_fmt = kwargs.get('base_fmt')
+    arg_fmt = kwargs.get('arg_fmt')
 
     # The base for comparisons is the first passed selector.
     base_selector, selectors = args[0], args[1:]
@@ -1473,8 +1477,8 @@ def comparedist(df, *args, **kwargs):
         xr = np.nanmin( [np.nanmin(df1), np.nanmin(dfn)] ), np.nanmax( [np.nanmax(df1), np.nanmax(dfn)] )
 
         ax1.set_title('Distributions of %s and %s' % (base_selector, selector))
-        _areadist(ax1, dfn.values, xr, c='r', bins=bins, label=join_label(base_selector))
-        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3, label=join_label(selector))
+        _areadist(ax1, dfn.values, xr, c='r', bins=bins, label=format_label(base_selector, base_fmt))
+        _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3, label=format_label(selector, arg_fmt))
 
         ax1.set_xlabel(xlabel)
         ax1.set_ylabel(ylabel)

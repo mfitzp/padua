@@ -186,7 +186,7 @@ def get_index_list(l, ms):
     return [l.index(s) for s in ms if s in l]
 
 
-def join_label(sl):
+def format_label(sl, fmt=None):
     """
     Combine a list of strings to a single str, joined by sep.
     Passes through single strings.
@@ -196,6 +196,9 @@ def join_label(sl):
     if isinstance(sl, str):
         # Already is a string.
         return sl
+
+    if fmt:
+        return fmt.format(*sl)
 
     return ' '.join(str(s) for s in sl)
 
