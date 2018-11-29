@@ -141,7 +141,7 @@ def _pca_scores(
     :param markersize: int Size of the marker
     :param label_scores: Index level to label markers with
     :param show_covariance_ellipse: Plot covariance (2*std) ellipse around each grouping
-    :param kwargs:
+    :param optimize_label_iter: Number of iterations to run label adjustment algorithm
     :return: Generated axes
     """
 
@@ -191,8 +191,7 @@ def _pca_scores(
         if texts and optimize_label_iter:
             adjust_text(
                 texts,
-                lim=optimize_label_iter,
-                arrowprops=dict(arrowstyle='->', color='red')
+                lim=optimize_label_iter
             )
 
     ax.set_xlabel(scores.index[pc1], fontsize=16)
@@ -1449,11 +1448,14 @@ def comparedist(df, *args, **kwargs):
     :param arg0: the base dataframe *selector* to perform calculation against.
     :param *: a number of `pandas.DataFrames` selectors to compare to arg0
     :param bins: `int` number of bins for histogram
+    :param xlabel: label for X axis
+    :param ylabel: label for Y axis
     :return: Figure
     """
 
     bins = kwargs.get('bins', 50)
-
+    xlabel = kwargs.get('xlabel', 'Value')
+    ylabel = kwargs.get('ylabel', 'Count')
 
     # The base for comparisons is the first passed selector.
     base_selector, selectors = args[0], args[1:]
@@ -1474,8 +1476,8 @@ def comparedist(df, *args, **kwargs):
         _areadist(ax1, dfn.values, xr, c='r', bins=bins, label=join_label(base_selector))
         _areadist(ax1, df1.values, xr, c='k', bins=bins, alpha=0.3, label=join_label(selector))
 
-        ax1.set_xlabel('Value')
-        ax1.set_ylabel('Count')
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel(ylabel)
 
         ax1.legend(loc='upper right')
 
