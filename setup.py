@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '0.1.15'
+version = '0.1.16'
 
 setup(
     name='padua',
@@ -31,5 +31,6 @@ setup(
         'scikit-learn',
         'requests',
         'requests_toolbelt',
+        'adjustText'
     ]
 )
